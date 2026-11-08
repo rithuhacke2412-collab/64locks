@@ -1,0 +1,1672 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-yyehFflhktDdF7MlyALXKhUe72WDVEKCYJ3dQlmi1Qk=' 'sha256-hF54JVr+JAIIjCqyYrrpe/+dNQPd/0wDnf1N4QBGDNU=' 'sha256-ZH1LRJkM19mymbs3TZ0b8xOsosdSOPnN1P+6m9cvr0Q='; style-src 'sha256-lFvo0pt9EljBgG3rfnLZnq5PSL49kvm3XlMie9IzN5I='; base-uri 'none'; form-action 'none'">
+<title>64 Locks — offline password generator</title>
+<style>
+:root{--bg:#1d1e21;--hi:#2d2f34;--lo:#0d0e10;--fg:#dedfe2;--muted:#8d8f96;--line:#3a3c42;--ok:#b5d9c6;--warn:#dcc17f;--bad:#e8a09a;--code:#151618;--r:20px;--font:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;--mono:ui-monospace,"Cascadia Mono",Menlo,Consolas,monospace;color-scheme:dark}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html{-webkit-text-size-adjust:none;text-size-adjust:none}
+body{margin:0;padding:26px 14px 60px;background:var(--bg);color:var(--fg);font:16px/1.5 var(--font)}
+main{max-width:760px;margin:0 auto}
+h1{font-size:1.7rem;margin:0 0 4px;letter-spacing:.02em}
+.tagline{color:var(--muted);margin:0 0 12px;font-size:.95rem}
+.gate{margin:0 0 26px;font-size:.8rem;color:var(--muted)}
+.gate.bad{color:var(--bad);font-weight:600}
+h2{font-size:.78rem;margin:0 0 14px;color:var(--muted);text-transform:uppercase;letter-spacing:.12em;font-weight:600}
+section,details{background:var(--bg);border-radius:var(--r);padding:22px 24px;margin:0 0 26px;box-shadow:12px 12px 26px var(--lo),-12px -12px 26px var(--hi)}
+label{display:block;font-weight:600;font-size:.86rem;margin:14px 0 6px;color:var(--fg)}
+label.first{margin-top:0}
+label.opt{font-weight:400;display:flex;align-items:center;gap:8px;margin:8px 14px 0 0;cursor:pointer}
+label.inline{margin:0 8px 0 0}
+input[type=text],input[type=password],input[type=number],textarea{width:100%;padding:12px 15px;border:0;border-radius:15px;background:var(--bg);color:var(--fg);font:inherit;font-size:1rem;outline:0;box-shadow:inset 6px 6px 12px var(--lo),inset -6px -6px 12px var(--hi)}
+input[type=number]{width:110px}
+textarea{font-family:var(--mono);font-size:.85rem}
+input::placeholder{color:#5e6067}
+input[type=radio],input[type=checkbox]{accent-color:#a4a6ad;width:17px;height:17px;margin:0}
+input:focus-visible,textarea:focus-visible,button:focus-visible,[tabindex]:focus-visible,a:focus-visible,summary:focus-visible{outline:2px solid #6d7078;outline-offset:3px}
+.hint{color:var(--muted);font-size:.84rem;margin:8px 0 0}
+.flush{margin:0}
+button{font:inherit;font-size:.92rem;cursor:pointer;border:0;border-radius:14px;background:var(--bg);color:var(--fg);padding:10px 18px;box-shadow:6px 6px 12px var(--lo),-6px -6px 12px var(--hi);transition:box-shadow .12s}
+button:hover{color:#fff}
+button:active{box-shadow:inset 4px 4px 8px var(--lo),inset -4px -4px 8px var(--hi)}
+button.primary{font-weight:600;color:#fff;background:linear-gradient(145deg,#393b41,#232427)}
+button:disabled{opacity:.4;cursor:not-allowed;box-shadow:none}
+button.linklike{background:none;box-shadow:none;color:#c4c6cc;padding:0;text-decoration:underline;font-size:.88rem}
+.row{display:flex;gap:14px;align-items:center;flex-wrap:wrap}
+.mt6{margin-top:6px}.mt8{margin-top:8px}.mt12{margin-top:14px}.mb10{margin-bottom:12px}
+code{font-family:var(--mono);background:var(--code);padding:1px 6px;border-radius:6px;font-size:.88em}
+#dropzone{border-radius:var(--r);padding:22px;text-align:center;box-shadow:inset 7px 7px 14px var(--lo),inset -7px -7px 14px var(--hi);transition:box-shadow .12s}
+#dropzone.drag{box-shadow:inset 7px 7px 14px var(--lo),inset -7px -7px 14px var(--hi),0 0 0 2px #6d7078}
+#dropzone p{margin:7px 0}
+#key-status{margin-top:14px;padding:11px 14px;border-radius:14px;font-size:.9rem;background:var(--code);box-shadow:inset 3px 3px 6px var(--lo),inset -3px -3px 6px var(--hi)}
+#key-status.ok{color:var(--ok)}
+#key-status.err{color:var(--bad)}
+#key-status:empty{display:none}
+.modes{margin:16px 0 0;padding:6px 16px 14px;border:0;border-radius:16px;box-shadow:inset 4px 4px 9px var(--lo),inset -4px -4px 9px var(--hi)}
+.modes legend{font-weight:600;font-size:.86rem;padding:0 8px}
+.meter{height:10px;border-radius:6px;margin-top:12px;overflow:hidden;background:var(--code);box-shadow:inset 2px 2px 4px var(--lo),inset -2px -2px 4px var(--hi)}
+#meter-bar{height:100%;width:0%;background:var(--bad);border-radius:6px;transition:width .12s}
+#meter-bar.warn{background:var(--warn)}
+#meter-bar.ok{background:var(--ok)}
+#strength-note{font-size:.88rem;margin:8px 0 0}
+#strength-note.bad{color:var(--bad);font-weight:600}
+#strength-note.warn{color:var(--warn)}
+#strength-note.ok{color:var(--ok)}
+#password{font-family:var(--mono);font-size:1.05rem;word-break:break-all;display:block;width:100%;min-height:54px;padding:14px 16px;border-radius:15px;background:#cdced2;color:#16171a;box-shadow:inset 4px 4px 8px #a6a7ab,inset -4px -4px 8px #eef0f3}
+#password.stale-out{box-shadow:inset 4px 4px 8px #a6a7ab,inset -4px -4px 8px #eef0f3,0 0 0 3px var(--warn)}
+#fingerprint{font-family:var(--mono);color:var(--muted);font-size:.85rem;margin:10px 0 0}
+#stale,#ver-note{color:var(--warn);font-size:.88rem;margin:10px 0 0}
+#status{color:var(--muted);font-size:.9rem;min-height:1.3em}
+#copy-fallback{margin-top:12px}
+#copy-fallback p{margin:0 0 8px;font-size:.88rem;color:var(--warn)}
+.spinner{width:22px;height:22px;border-radius:50%;display:inline-block;vertical-align:middle;border:3px solid var(--line);border-top-color:#b6b8be;animation:spin .9s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.spinner{animation:none}*{transition:none!important}}
+details summary{cursor:pointer;font-weight:600}
+details[open] summary{margin-bottom:10px}
+details ul{margin:8px 0;padding-left:20px}
+details li{margin:7px 0}
+details p{margin:8px 0}
+#st-log{font-family:var(--mono);font-size:.8rem}
+#st-log div{padding:3px 0;border-bottom:1px solid var(--line)}
+#st-log .pass{color:var(--ok)}
+#st-log .fail{color:var(--bad);font-weight:600}
+#st-log .info{color:var(--muted)}
+#st-run{margin:12px 0}
+footer{color:var(--muted);font-size:.78rem;text-align:center;margin-top:30px}
+h3{font-size:.95rem;margin:18px 0 6px}
+section ul,section ol{margin:6px 0;padding-left:20px}
+section li{margin:7px 0}
+.siterow{display:flex;gap:14px;align-items:center}
+.siterow input{flex:1}
+.note{margin-top:14px;padding:14px 18px;border-radius:16px;font-size:.9rem;box-shadow:inset 4px 4px 9px var(--lo),inset -4px -4px 9px var(--hi)}
+.note p{margin:0}
+.note ul{margin:8px 0 0;padding-left:20px}
+details details{box-shadow:none;padding:6px 0;margin:14px 0 0}
+details details summary{font-size:.9rem;color:var(--muted)}
+details h3:first-of-type{margin-top:4px}
+#terms-reopen{font-size:.78rem;margin-top:8px}
+</style>
+</head>
+<body>
+<main>
+<header>
+  <h1>64 Locks</h1>
+  <p class="tagline">Deterministic, fully offline password generator. One key file, one passphrase, one site name. No accounts, no sync, no vault.</p>
+  <p id="gate" class="gate" hidden></p>
+</header>
+
+<section id="terms" aria-labelledby="h-terms">
+  <h2 id="h-terms">Read me and terms</h2>
+  <h3>Read me</h3>
+  <ul>
+    <li><strong>What it does.</strong> It makes a different long password for every site, URL or app from three things: your key file, your passphrase and the exact name you type. The same three things always give the same password, on any device. Nothing is stored or sent anywhere.</li>
+    <li><strong>What you must keep.</strong> The key file (two backups in two places), the passphrase (in your head) and the exact way you write each site name.</li>
+    <li><strong>What it cannot do.</strong> It cannot recover a lost key file or a forgotten passphrase, and it does not change your passwords on websites for you. You paste the result into the site’s password box yourself. It is not a vault.</li>
+    <li><strong>Before you rely on it.</strong> Open <em>Tips: important</em> at the bottom of the page and read the do and don’t lists.</li>
+  </ul>
+  <h3>Terms of use</h3>
+  <ol>
+    <li>This tool is provided “as is”, without any warranty. You use it at your own risk.</li>
+    <li>You are responsible for your key file, your passphrase, your backups and your accounts. Losing the key file or the passphrase, typing a site name differently, or using a compromised device can lock you out or expose your accounts, and the makers of this tool are not liable for that.</li>
+    <li>It has not been reviewed by an independent security expert. Do not make it the only protection for critical accounts such as banking.</li>
+    <li>It collects nothing and sends nothing. Your browser keeps only the last key file name, a table of version numbers stored under keyed hashes, and the fact that you accepted these terms. You can erase them by clearing this site’s data in your browser.</li>
+    <li>If you change the page’s code, you do so at your own risk, and its built-in checks may stop working.</li>
+    <li>Use it only for accounts you are allowed to use and only for lawful purposes.</li>
+  </ol>
+  <label class="opt"><input type="checkbox" id="terms-ok"> I have read the read me and I agree to these terms.</label>
+  <div class="row mt12"><button type="button" id="terms-enter" class="primary" disabled>Enter</button></div>
+</section>
+
+<div id="app" hidden>
+
+<section id="sec-key" aria-labelledby="h-key">
+  <h2 id="h-key">1 · Key file</h2>
+  <div id="dropzone" role="button" tabindex="0" aria-label="Key file drop zone. Press Enter to pick a file.">
+    <p><strong>Drop your key file here</strong></p>
+    <p>
+      <button type="button" id="btn-pick">Choose a file…</button>
+      <span aria-hidden="true">·</span>
+      <button type="button" id="btn-newkey" class="linklike">or create a new key file</button>
+    </p>
+    <p class="hint">The key file is a 32-byte random secret you keep. It can have any file name. Back it up, because it cannot be recovered. Files over 4 KB are refused.</p>
+    <input type="file" id="file-input" hidden>
+  </div>
+  <div class="mt12">
+    <label class="first" for="key-typed">Or type or paste the key</label>
+    <textarea id="key-typed" rows="3" maxlength="4096" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Paste the whole key file text (best: typos are caught), or just the key as 44 base64 characters or 64 hex digits"></textarea>
+    <div class="row mt8"><button type="button" id="key-use">Use typed key</button><span class="hint flush">The box is emptied as soon as the key is loaded.</span></div>
+  </div>
+  <p id="key-status" role="status" aria-live="polite"></p>
+  <div id="newkey-area" hidden>
+    <label class="first" for="newkey-name">File name for the download (anything you like)</label>
+    <input type="text" id="newkey-name" maxlength="80" value="64locks-key.txt" autocomplete="off" spellcheck="false">
+    <label for="newkey-text">Key file text (keep this safe)</label>
+    <textarea id="newkey-text" readonly rows="4" aria-describedby="newkey-hint"></textarea>
+    <p class="hint" id="newkey-hint">
+      <span id="newkey-lead"></span>
+      <a id="newkey-dl" download="64locks-key.txt" href="#">Download 64locks-key.txt</a>
+      and store it somewhere safe (for example a USB drive).
+    </p>
+    <div class="row mt8"><button type="button" id="newkey-done">I saved it: hide and erase this text</button></div>
+  </div>
+  <div class="row mt12"><button type="button" id="lock">Lock and clear everything</button>
+    <span class="hint flush">Also happens after 5 minutes idle or when the page is closed.</span></div>
+</section>
+
+<section id="sec-pass" aria-labelledby="h-pass">
+  <h2 id="h-pass">2 · Passphrase</h2>
+  <label class="first" for="pass">Passphrase (used for every site, so make it strong)</label>
+  <input type="password" id="pass" maxlength="512" autocomplete="off" autocapitalize="off" spellcheck="false" aria-describedby="strength-note">
+  <div class="row mt8">
+    <button type="button" id="pass-toggle" aria-pressed="false">Show passphrase</button>
+    <label class="opt"><input type="checkbox" id="pass-random"> I generated it randomly (dice words or a generator)</label>
+  </div>
+  <div class="meter" role="img" aria-label="Passphrase strength meter"><div id="meter-bar"></div></div>
+  <p id="strength-note" aria-live="polite"></p>
+  <p class="hint">The meter assumes a phrase you invented unless you tick the box, because it cannot tell random from chosen. Six random Diceware words (about 78 bits) is the recommended minimum.</p>
+</section>
+
+<section id="sec-site" aria-labelledby="h-site">
+  <h2 id="h-site">3 · Site, URL or app</h2>
+  <label class="first" for="site">Site name, URL or app name (type it exactly)</label>
+  <div class="siterow">
+    <input type="text" id="site" maxlength="253" placeholder="www.example.com, or an app name" autocomplete="off" autocapitalize="off" spellcheck="false" aria-describedby="site-note">
+    <button type="button" id="site-note-btn" aria-expanded="false" aria-controls="site-note">Note</button>
+  </div>
+  <div id="site-note" class="note" role="note" hidden>
+    <p><strong>Every character counts.</strong> The name is used exactly as you type it. Capital letters, <code>www.</code>, <code>https://</code>, a slash at the end, dots, dashes and spaces inside the name all change the password. Only spaces at the very start or end are ignored.</p>
+    <ul>
+      <li>Do not remove <code>www.</code>. <code>www.example.com</code> and <code>example.com</code> give two different passwords.</li>
+      <li>Choose one way to write each site and always write it that way, for example always <code>www.example.com</code> in lower case.</li>
+      <li>Write down exactly what you typed, next to the account name, and keep that note away from your key file and passphrase.</li>
+      <li>For an app, type the name exactly as you decided, such as <code>Instagram</code>.</li>
+      <li>Need a new password for the same site? Raise the version below instead of changing the name.</li>
+      <li>If a password does not work, you probably typed the name differently. Try it with and without <code>www.</code> and with other capital letters.</li>
+    </ul>
+  </div>
+  <div class="row mt12">
+    <label class="inline" for="version">Version</label>
+    <input type="number" id="version" min="1" max="9999" step="1" value="1">
+    <button type="button" id="why-version-btn" class="linklike" aria-expanded="false" aria-controls="why-version">why?</button>
+  </div>
+  <div id="why-version" class="mt8" hidden>
+    <p class="hint flush">The version number is mixed into the salt, so raising it gives a completely different password for the same site. That is how you rotate a password. The page remembers the highest version you copied for each site and key file (stored under a keyed hash, never the site name) and warns you if you go lower. It is only a warning: you can still use any version.</p>
+  </div>
+  <p id="ver-note" hidden></p>
+  <div class="row mt6"><button type="button" id="ver-latest" class="linklike" hidden>use the latest version</button>
+    <button type="button" id="ver-clear" class="linklike">forget remembered versions for this key file</button></div>
+  <fieldset class="modes">
+    <legend>Output mode</legend>
+    <div class="row" role="radiogroup" aria-label="Output mode">
+      <label class="opt"><input type="radio" name="mode" id="mode-hex64" value="hex64" checked> hex64 · 64 hex chars (default)</label>
+      <label class="opt"><input type="radio" name="mode" id="mode-hex32" value="hex32"> hex32 · 32 hex chars</label>
+      <label class="opt"><input type="radio" name="mode" id="mode-web" value="web"> web · 20 chars, mixed case + digit</label>
+    </div>
+  </fieldset>
+</section>
+
+<section id="out-card" aria-labelledby="h-out">
+  <h2 id="h-out">Password</h2>
+  <div class="row mb10">
+    <span class="spinner" id="spinner" hidden aria-hidden="true"></span>
+    <span id="status" role="status" aria-live="polite">Enter your key file, passphrase and site.</span>
+  </div>
+  <output id="password" for="pass site version" aria-live="polite"></output>
+  <p id="fingerprint"></p>
+  <p id="stale" role="alert" hidden></p>
+  <div class="row mt12">
+    <button type="button" id="copy" class="primary" disabled>Copy password</button>
+    <button type="button" id="derive-btn">Derive again</button>
+  </div>
+  <p class="hint">Clipboard warning: other apps, clipboard history tools (such as Win+V) and cloud clipboard sync can read and keep what you copy. This page tries to clear the clipboard after 30 seconds and hides the password after 60 seconds, but cannot guarantee either.</p>
+  <div id="copy-fallback" hidden>
+    <p>Automatic copy was blocked by your browser. Select the text below and copy it manually (Ctrl/Cmd+C).</p>
+    <textarea id="copy-text" readonly rows="2"></textarea>
+  </div>
+</section>
+
+<details id="sec-notes">
+  <summary>Tips: important</summary>
+  <h3>Do</h3>
+  <ul>
+    <li><strong>Use a long passphrase.</strong> Six random words from dice or a generator is the target. Tick the “generated randomly” box only if that is really true.</li>
+    <li><strong>Keep the two parts apart.</strong> Key file on a USB drive or other offline media, passphrase in your head. One alone is not enough to make your passwords.</li>
+    <li><strong>Make two backups of the key file</strong> in two different safe places. If every copy is lost, every password made from it is lost, and nothing can recover it.</li>
+    <li><strong>Write each site name exactly the same way every time.</strong> Capitals, <code>www.</code> and dots all matter. Keep a note of how you wrote each one, away from your key and passphrase.</li>
+    <li><strong>Check the fingerprint</strong> shown when you load or type a key and compare it with your backup. It catches a mistyped key.</li>
+    <li><strong>Raise the version to change a password</strong> (a site forces a change, or you think one leaked). The page warns you if you go lower.</li>
+    <li><strong>Use hex32 or web mode</strong> when a site rejects long passwords or wants letters and digits.</li>
+    <li><strong>Lock when you finish</strong> and close the tab, especially on a computer you do not fully control.</li>
+    <li><strong>Use a trusted, updated device</strong> and a private window, with no browser extensions you do not trust.</li>
+    <li><strong>Keep your own saved copy of this page</strong> and check that it says the startup check passed. Run <code>?selftest=1</code> after moving to a new device.</li>
+    <li><strong>Keep each account’s own recovery codes</strong> somewhere safe, separate from this tool.</li>
+  </ul>
+  <h3>Don’t</h3>
+  <ul>
+    <li><strong>Don’t store the key file and the passphrase together</strong>, and never in email, cloud notes, chat or photos.</li>
+    <li><strong>Don’t share</strong> the key file, the passphrase or the passwords, and don’t screenshot them.</li>
+    <li><strong>Don’t use a famous phrase,</strong> song line, name, birthday or anything you use elsewhere as the passphrase.</li>
+    <li><strong>Don’t type the passphrase anywhere except this page.</strong> Websites only ever need the finished password.</li>
+    <li><strong>Don’t change how you write a site name</strong> (adding or removing <code>www.</code>, <code>https://</code> or a slash) unless you want a different password.</li>
+    <li><strong>Don’t reuse an old version number</strong> for a new password.</li>
+    <li><strong>Don’t use it on public or shared computers,</strong> or on a device that may have malware or a keylogger. No tool can protect you there.</li>
+    <li><strong>Don’t get this page from a link or file someone sent you.</strong> A tampered copy could steal your passphrase. Use your own saved copy.</li>
+    <li><strong>Don’t rely on the clipboard clearing.</strong> History tools may keep a copy. Paste, then lock.</li>
+    <li><strong>Don’t edit the page’s code</strong> unless you know what you are doing. It is sealed with a security policy and will stop working.</li>
+    <li><strong>Don’t make it your only protection for critical accounts</strong> such as banking until an independent security expert has reviewed it.</li>
+  </ul>
+  <h3>If something goes wrong</h3>
+  <ul>
+    <li><strong>Key file lost:</strong> nothing can recover it. Make a new key and reset each account’s password through that site’s own recovery.</li>
+    <li><strong>Key file stolen:</strong> they still need your passphrase, but treat it as serious. Make a new key and change your important passwords first.</li>
+    <li><strong>Passphrase seen by someone:</strong> they still need the key file. Choose a new passphrase and change your passwords when you can.</li>
+    <li><strong>A password does not match:</strong> check the site spelling, the version, the output mode and the fingerprint first.</li>
+  </ul>
+  <details>
+    <summary>Technical details</summary>
+    <p>The passphrase is normalized (Unicode NFKD, trimmed, whitespace runs collapsed, case preserved). The site name is normalized only by Unicode NFC and trimming. A 32-byte salt is <code>HMAC-SHA-256(K, "64locks/v2/salt|" + site + "|" + version)</code> and a 32-byte input key is <code>HMAC-SHA-256(K, "64locks/v2/pass|" + passphrase)</code>, where <code>K</code> is the 32-byte key. The final key material is <code>Argon2id(ikm, salt, m=65536 KiB, t=3, p=1, 32 bytes, version 0x13)</code>. The hex64 password is that tag in hex and hex32 is its first 16 bytes. Web mode derives a second tag with the salt suffix <code>|web</code>, expands it with <code>HMAC-SHA-256(tag, "64locks/v2/webstream|" + counter)</code> and draws every character by rejection sampling: one lowercase letter, one uppercase letter, one digit and 17 from all 62, then an unbiased shuffle. The fingerprint is the first 8 hex characters of <code>SHA-256("64locks/v2/fp|" + hex64)</code>.</p>
+    <p>At every start the page checks its Argon2d, Argon2i, Argon2id and BLAKE2b code against the official RFC 9106 test vectors and refuses to generate if one fails. New key files carry a 16-character id from a domain-separated SHA-256 of the key; older 8-character ids still load. Working buffers are zeroed after each derivation and the key is zeroed when you lock, but JavaScript strings (the passphrase and the password text) cannot be wiped and stay until the browser frees them. This page makes no network requests.</p>
+  </details>
+</details>
+
+<section id="selftest" hidden aria-labelledby="h-st">
+  <h2 id="h-st">Self-test (?selftest=1)</h2>
+  <p class="hint flush">Official vectors, golden vectors, offline audit, estimator, determinism and failure paths. The test never touches a key you have loaded: your key, fields and output are saved first and restored afterwards, and the form is locked while it runs. It needs about a minute.</p>
+  <button type="button" id="st-run" class="primary">Run self-test</button>
+  <div id="st-log" aria-live="polite"></div>
+</section>
+
+</div>
+
+<footer>
+  Argon2id: pure-JavaScript port of the PHC winner reference implementation. Test vectors: RFC 9106.
+  Everything runs locally in your browser, so pulling the network cable changes nothing.
+  <br><button type="button" id="terms-reopen" class="linklike">Read me and terms</button>
+</footer>
+</main>
+
+<script>
+/* Argon2id reference implementation, pure JavaScript.
+   Port of the PHC winner reference (CC0 / Apache-2.0), verified against
+   RFC 9106 test vectors and the reference C implementation. */
+/*
+ * Pure-JavaScript Argon2 (v1.3, types d/i/id) + Blake2b.
+ * Ported line-by-line from the PHC reference implementation
+ * (phc-winner-argon2, CC0/Apache-2.0). No WASM, no eval, no network.
+ *
+ * 64-bit words are stored as consecutive 32-bit (lo, hi) pairs in
+ * Uint32Arrays. All arithmetic is exact double-precision integer math
+ * (every intermediate is < 2^53), so results are bit-identical on every
+ * JS engine.
+ */
+(function (root) {
+  'use strict';
+
+  /* ------------------------------------------------------------------ */
+  /* Blake2b                                                             */
+  /* ------------------------------------------------------------------ */
+
+  // IV words as (lo, hi) pairs, little-endian.
+  var B2_IV = [
+    0xf3bcc908, 0x6a09e667, 0x84caa73b, 0xbb67ae85,
+    0xfe94f82b, 0x3c6ef372, 0x5f1d36f1, 0xa54ff53a,
+    0xade682d1, 0x510e527f, 0x2b3e6c1f, 0x9b05688c,
+    0xfb41bd6b, 0x1f83d9ab, 0x137e2179, 0x5be0cd19
+  ];
+
+  var SIGMA = [
+    [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
+    [14, 10, 4, 8, 9, 15, 13, 6, 1, 12, 0, 2, 11, 7, 5, 3],
+    [11, 8, 12, 0, 5, 2, 15, 13, 10, 14, 3, 6, 7, 1, 9, 4],
+    [7, 9, 3, 1, 13, 12, 11, 14, 2, 6, 5, 10, 4, 0, 15, 8],
+    [9, 0, 5, 7, 2, 4, 10, 15, 14, 1, 11, 12, 6, 8, 3, 13],
+    [2, 12, 6, 10, 0, 11, 8, 3, 4, 13, 7, 5, 15, 14, 1, 9],
+    [12, 5, 1, 15, 14, 13, 4, 10, 0, 7, 6, 3, 9, 2, 8, 11],
+    [13, 11, 7, 14, 12, 1, 3, 9, 5, 0, 15, 4, 8, 6, 2, 10],
+    [6, 15, 14, 9, 11, 3, 0, 8, 12, 2, 13, 7, 1, 4, 10, 5],
+    [10, 2, 8, 4, 7, 6, 1, 5, 15, 11, 9, 14, 3, 12, 13, 0],
+    [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
+    [14, 10, 4, 8, 9, 15, 13, 6, 1, 12, 0, 2, 11, 7, 5, 3]
+  ];
+
+  // One Blake2b compression round: v is 16 words (32 u32), m is the block
+  // (16 words as pairs). a..d are word indices.
+  function b2g(v, a, b, c, d, xl, xh, yl, yh) {
+    var a2 = a << 1, b2 = b << 1, c2 = c << 1, d2 = d << 1;
+    var al = v[a2], ah = v[a2 + 1], bl = v[b2], bh = v[b2 + 1];
+    var cl = v[c2], ch = v[c2 + 1], dl = v[d2], dh = v[d2 + 1];
+    var l, h, cr;
+    // a = a + b + x
+    l = al + bl + xl; cr = Math.floor(l / 4294967296); l -= cr * 4294967296;
+    h = (ah + bh + xh + cr) >>> 0; al = l; ah = h;
+    // d = rotr64(d ^ a, 32)
+    l = (dl ^ al) >>> 0; h = (dh ^ ah) >>> 0; dl = h; dh = l;
+    // c = c + d
+    l = cl + dl; cr = l >= 4294967296 ? 1 : 0; l = l >>> 0;
+    h = (ch + dh + cr) >>> 0; cl = l; ch = h;
+    // b = rotr64(b ^ c, 24)
+    l = (bl ^ cl) >>> 0; h = (bh ^ ch) >>> 0;
+    bl = ((l >>> 24) | (h << 8)) >>> 0; bh = ((h >>> 24) | (l << 8)) >>> 0;
+    // a = a + b + y
+    l = al + bl + yl; cr = Math.floor(l / 4294967296); l -= cr * 4294967296;
+    h = (ah + bh + yh + cr) >>> 0; al = l; ah = h;
+    // d = rotr64(d ^ a, 16)
+    l = (dl ^ al) >>> 0; h = (dh ^ ah) >>> 0;
+    dl = ((l >>> 16) | (h << 16)) >>> 0; dh = ((h >>> 16) | (l << 16)) >>> 0;
+    // c = c + d
+    l = cl + dl; cr = l >= 4294967296 ? 1 : 0; l = l >>> 0;
+    h = (ch + dh + cr) >>> 0; cl = l; ch = h;
+    // b = rotr64(b ^ c, 63)
+    l = (bl ^ cl) >>> 0; h = (bh ^ ch) >>> 0;
+    bl = ((l << 1) | (h >>> 31)) >>> 0; bh = ((h << 1) | (l >>> 31)) >>> 0;
+
+    v[a2] = al; v[a2 + 1] = ah; v[b2] = bl; v[b2 + 1] = bh;
+    v[c2] = cl; v[c2 + 1] = ch; v[d2] = dl; v[d2 + 1] = dh;
+  }
+
+  // out: Uint8Array(outLen). parts: array of Uint8Arrays.
+  function blake2b(outLen, parts) {
+    var h = new Uint32Array(16), i;
+    for (i = 0; i < 16; i++) h[i] = B2_IV[i];
+    h[0] = (h[0] ^ ((0x01010000 | outLen) >>> 0)) >>> 0; // param block word 0 (unkeyed)
+
+    var total = 0;
+    for (i = 0; i < parts.length; i++) total += parts[i].length;
+
+    var v = new Uint32Array(32);
+    var m = new Uint32Array(32);
+    var off = 0, pi = 0, po = 0; // position in concatenated parts
+
+    function compress(isLast, t) {
+      var r, s, k;
+      for (k = 0; k < 16; k++) { v[k] = h[k]; v[k + 16] = B2_IV[k]; }
+      var tl = t % 4294967296, th = Math.floor(t / 4294967296);
+      v[24] = (v[24] ^ tl) >>> 0; v[25] = (v[25] ^ th) >>> 0;
+      if (isLast) { v[28] = (v[28] ^ 0xffffffff) >>> 0; v[29] = (v[29] ^ 0xffffffff) >>> 0; }
+      for (r = 0; r < 12; r++) {
+        s = SIGMA[r];
+        b2g(v, 0, 4, 8, 12, m[2 * s[0]], m[2 * s[0] + 1], m[2 * s[1]], m[2 * s[1] + 1]);
+        b2g(v, 1, 5, 9, 13, m[2 * s[2]], m[2 * s[2] + 1], m[2 * s[3]], m[2 * s[3] + 1]);
+        b2g(v, 2, 6, 10, 14, m[2 * s[4]], m[2 * s[4] + 1], m[2 * s[5]], m[2 * s[5] + 1]);
+        b2g(v, 3, 7, 11, 15, m[2 * s[6]], m[2 * s[6] + 1], m[2 * s[7]], m[2 * s[7] + 1]);
+        b2g(v, 0, 5, 10, 15, m[2 * s[8]], m[2 * s[8] + 1], m[2 * s[9]], m[2 * s[9] + 1]);
+        b2g(v, 1, 6, 11, 12, m[2 * s[10]], m[2 * s[10] + 1], m[2 * s[11]], m[2 * s[11] + 1]);
+        b2g(v, 2, 7, 8, 13, m[2 * s[12]], m[2 * s[12] + 1], m[2 * s[13]], m[2 * s[13] + 1]);
+        b2g(v, 3, 4, 9, 14, m[2 * s[14]], m[2 * s[14] + 1], m[2 * s[15]], m[2 * s[15] + 1]);
+      }
+      for (k = 0; k < 16; k++) h[k] = (h[k] ^ v[k] ^ v[k + 16]) >>> 0;
+    }
+
+    // Fill m with 128 bytes from the (virtual) concatenation, zero-padded.
+    function loadBlock() {
+      var need = 128, got = 0, p, take;
+      while (got < need && pi < parts.length) {
+        p = parts[pi];
+        take = Math.min(need - got, p.length - po);
+        for (var j = 0; j < take; j++) m[(got + j) >> 2] |= p[po + j] << (8 * ((got + j) & 3));
+        got += take; po += take;
+        if (po === p.length) { pi++; po = 0; }
+      }
+      // remaining bytes stay zero (m is re-zeroed below)
+    }
+
+    while (off < total) {
+      m.fill(0);
+      loadBlock();
+      var take = Math.min(128, total - off);
+      compress(off + take >= total, off + take);
+      off += take;
+    }
+    if (total === 0) { m.fill(0); compress(true, 0); }
+
+    var out = new Uint8Array(outLen);
+    for (i = 0; i < outLen; i++) out[i] = (h[i >> 2] >>> (8 * (i & 3))) & 0xff;
+    return out;
+  }
+
+  // Variable-length hash H' (blake2b_long). out: Uint8Array(outLen), outLen >= 4.
+  function blake2bLong(out, outLen, input) {
+    if (outLen <= 64) {
+      var r = blake2b(outLen, [u32le(outLen), input]);
+      out.set(r);
+      return;
+    }
+    var outBuffer = blake2b(64, [u32le(outLen), input]);
+    var p = 32, toproduce = outLen - 32;
+    out.set(outBuffer.subarray(0, 32), 0);
+    while (toproduce > 64) {
+      outBuffer = blake2b(64, [outBuffer]);
+      out.set(outBuffer.subarray(0, 32), p);
+      p += 32; toproduce -= 32;
+    }
+    var fin = blake2b(toproduce, [outBuffer]);
+    out.set(fin.subarray(0, toproduce), p);
+  }
+
+  function u32le(x) { return new Uint8Array([x & 255, (x >>> 8) & 255, (x >>> 16) & 255, (x >>> 24) & 255]); }
+
+  /* ------------------------------------------------------------------ */
+  /* Argon2 core                                                         */
+  /* ------------------------------------------------------------------ */
+
+  var SC = new Uint32Array(256);   // scratch block
+  var OLD = new Uint32Array(256);  // saved old destination block
+
+  // Word-offset tables (in u32 units) for the two round orientations.
+  var COL = new Uint32Array(16); // words 0..15 consecutive
+  var ROW = new Uint32Array(16); // words 2i,2i+1,2i+16,2i+17,...,2i+112,2i+113
+  (function () {
+    var k;
+    for (k = 0; k < 16; k++) COL[k] = 2 * k;
+    for (k = 0; k < 16; k++) ROW[k] = 32 * (k >> 1) + 2 * (k & 1);
+  })();
+
+// Fully inlined BLAKE2_ROUND_NOMSG over 16 words at (SRC/DST, base, OFF).
+  // First round reads SRC and writes DST; use same array for in-place rounds.
+const REG = new Uint32Array(32);
+function gb(a, b, c, d) {
+  const a2 = a << 1, b2 = b << 1, c2 = c << 1, d2 = d << 1;
+  let al = REG[a2], ah = REG[a2 + 1], bl = REG[b2], bh = REG[b2 + 1];
+  let cl = REG[c2], ch = REG[c2 + 1], dl = REG[d2], dh = REG[d2 + 1];
+  let p0, p1, q, r, wl, wh, l, h, l2, h2, xl, xh;
+  p0 = (al & 65535) * bl; p1 = (al >>> 16) * bl;
+  q = Math.floor(p1 / 65536); r = p1 - q * 65536;
+  wl = ((r << 17) + (p0 << 1)) >>> 0;
+  wh = (q + q + Math.floor((r * 131072 + p0 + p0) / 4294967296)) >>> 0;
+  l = al + bl; h = ah + bh + (l >= 4294967296 ? 1 : 0); l = l >>> 0;
+  l2 = l + wl; h2 = h + wh + (l2 >= 4294967296 ? 1 : 0);
+  al = l2 >>> 0; ah = h2 >>> 0;
+  xl = (dl ^ al) >>> 0; xh = (dh ^ ah) >>> 0; dl = xh; dh = xl;
+  p0 = (cl & 65535) * dl; p1 = (cl >>> 16) * dl;
+  q = Math.floor(p1 / 65536); r = p1 - q * 65536;
+  wl = ((r << 17) + (p0 << 1)) >>> 0;
+  wh = (q + q + Math.floor((r * 131072 + p0 + p0) / 4294967296)) >>> 0;
+  l = cl + dl; h = ch + dh + (l >= 4294967296 ? 1 : 0); l = l >>> 0;
+  l2 = l + wl; h2 = h + wh + (l2 >= 4294967296 ? 1 : 0);
+  cl = l2 >>> 0; ch = h2 >>> 0;
+  xl = (bl ^ cl) >>> 0; xh = (bh ^ ch) >>> 0;
+  bl = ((xl >>> 24) | (xh << 8)) >>> 0; bh = ((xh >>> 24) | (xl << 8)) >>> 0;
+  p0 = (al & 65535) * bl; p1 = (al >>> 16) * bl;
+  q = Math.floor(p1 / 65536); r = p1 - q * 65536;
+  wl = ((r << 17) + (p0 << 1)) >>> 0;
+  wh = (q + q + Math.floor((r * 131072 + p0 + p0) / 4294967296)) >>> 0;
+  l = al + bl; h = ah + bh + (l >= 4294967296 ? 1 : 0); l = l >>> 0;
+  l2 = l + wl; h2 = h + wh + (l2 >= 4294967296 ? 1 : 0);
+  al = l2 >>> 0; ah = h2 >>> 0;
+  xl = (dl ^ al) >>> 0; xh = (dh ^ ah) >>> 0;
+  dl = ((xl >>> 16) | (xh << 16)) >>> 0; dh = ((xh >>> 16) | (xl << 16)) >>> 0;
+  p0 = (cl & 65535) * dl; p1 = (cl >>> 16) * dl;
+  q = Math.floor(p1 / 65536); r = p1 - q * 65536;
+  wl = ((r << 17) + (p0 << 1)) >>> 0;
+  wh = (q + q + Math.floor((r * 131072 + p0 + p0) / 4294967296)) >>> 0;
+  l = cl + dl; h = ch + dh + (l >= 4294967296 ? 1 : 0); l = l >>> 0;
+  l2 = l + wl; h2 = h + wh + (l2 >= 4294967296 ? 1 : 0);
+  cl = l2 >>> 0; ch = h2 >>> 0;
+  xl = (bl ^ cl) >>> 0; xh = (bh ^ ch) >>> 0;
+  bl = ((xl << 1) | (xh >>> 31)) >>> 0; bh = ((xh << 1) | (xl >>> 31)) >>> 0;
+  REG[a2] = al; REG[a2 + 1] = ah; REG[b2] = bl; REG[b2 + 1] = bh;
+  REG[c2] = cl; REG[c2 + 1] = ch; REG[d2] = dl; REG[d2 + 1] = dh;
+}
+for (let k = 0; k < 16; k++) COL[k] = 2 * k;
+for (let k = 0; k < 16; k++) ROW[k] = 32 * (k >> 1) + 2 * (k & 1);
+function round16(M, base, OFF) {
+  for (let k = 0; k < 16; k++) { const u = base + OFF[k]; REG[2*k] = M[u]; REG[2*k+1] = M[u+1]; }
+  gb(0,4,8,12); gb(1,5,9,13); gb(2,6,10,14); gb(3,7,11,15);
+  gb(0,5,10,15); gb(1,6,11,12); gb(2,7,8,13); gb(3,4,9,14);
+  for (let k = 0; k < 16; k++) { const u = base + OFF[k]; M[u] = REG[2*k]; M[u+1] = REG[2*k+1]; }
+}
+
+  // fill_block: next = G(ref ^ prev) ^ (ref ^ prev) ^ (xor ? old_next : 0)
+  function fillBlock(M, P, R, N, xor) {
+    var p = P << 8, r = R << 8, n = N << 8, i;
+    if (xor) { for (i = 0; i < 256; i++) OLD[i] = M[n + i]; }
+    for (i = 0; i < 256; i++) M[n + i] = M[r + i] ^ M[p + i];
+    for (i = 0; i < 256; i++) SC[i] = M[n + i];
+    for (i = 0; i < 8; i++) round16(M, n + (i << 5), COL);
+    for (i = 0; i < 8; i++) round16(M, n + (i << 2), ROW);
+    for (i = 0; i < 256; i++) M[n + i] ^= SC[i];
+    if (xor) { for (i = 0; i < 256; i++) M[n + i] ^= OLD[i]; }
+  }
+
+  // u32 x u32 -> floor(product / 2^32), exact.
+  function mulhi(a, b) {
+    var a0 = a & 65535, a1 = a >>> 16;
+    return Math.floor((a0 * b + a1 * b * 65536) / 4294967296);
+  }
+
+  function argon2(type, password, salt, mCost, tCost, parallelism, outLen, secret, ad, version) {
+    if (version === undefined) version = 0x13;
+    if (!secret) secret = new Uint8Array(0);
+    if (!ad) ad = new Uint8Array(0);
+
+    var memoryBlocks = 4 * parallelism * Math.floor(mCost / (4 * parallelism));
+    if (memoryBlocks < 8 * parallelism) memoryBlocks = 8 * parallelism;
+    var segmentLength = Math.floor(memoryBlocks / (4 * parallelism));
+    var laneLength = segmentLength * 4;
+    var passes = tCost, lanes = parallelism;
+
+    // H0
+    var h0 = blake2b(64, [
+      u32le(lanes), u32le(outLen), u32le(mCost), u32le(passes),
+      u32le(version), u32le(type),
+      u32le(password.length), password,
+      u32le(salt.length), salt,
+      u32le(secret.length), secret,
+      u32le(ad.length), ad
+    ]);
+
+    // Memory (+3 scratch blocks: zero, input, address)
+    var M = new Uint32Array((memoryBlocks + 3) * 256);
+    var ZERO = memoryBlocks, INPUT = memoryBlocks + 1, ADDR = memoryBlocks + 2;
+
+    // First two blocks of each lane: B[l][i] = H'(h0 || LE32(i) || LE32(l))
+    var seed = new Uint8Array(72), b1024 = new Uint8Array(1024), l, i;
+    seed.set(h0, 0);
+    for (l = 0; l < lanes; l++) {
+      for (i = 0; i < 2; i++) {
+        seed[64] = i; seed[65] = 0; seed[66] = 0; seed[67] = 0;
+        seed[68] = l & 255; seed[69] = (l >>> 8) & 255;
+        seed[70] = (l >>> 16) & 255; seed[71] = (l >>> 24) & 255;
+        blake2bLong(b1024, 1024, seed);
+        var w = (l * laneLength + i) << 8, u;
+        for (u = 0; u < 1024; u += 4) {
+          M[w++] = b1024[u] | (b1024[u + 1] << 8) | (b1024[u + 2] << 16) | (b1024[u + 3] << 24);
+        }
+      }
+    }
+
+    // ---- fill_segment state ----
+    function indexAlpha(pass, slice, index, pseudoRand, sameLane) {
+      var refAreaSize;
+      if (pass === 0) {
+        if (slice === 0) refAreaSize = index - 1;
+        else if (sameLane) refAreaSize = slice * segmentLength + index - 1;
+        else refAreaSize = slice * segmentLength + (index === 0 ? -1 : 0);
+      } else {
+        if (sameLane) refAreaSize = laneLength - segmentLength + index - 1;
+        else refAreaSize = laneLength - segmentLength + (index === 0 ? -1 : 0);
+      }
+      var rp = pseudoRand;
+      var x0 = rp & 65535, x1 = rp >>> 16;
+      rp = x1 * x1 + Math.floor((x0 * x1 * 131072 + x0 * x0) / 4294967296);
+      var rel = refAreaSize - 1 - mulhi(refAreaSize, rp);
+      var start = 0;
+      if (pass !== 0) start = (slice === 3) ? 0 : (slice + 1) * segmentLength;
+      return (start + rel) % laneLength;
+    }
+
+    function nextAddresses() {
+      // input_block.v[6]++ (u32 pair at offset 12/13)
+      var x = M[(INPUT << 8) + 12] + 1;
+      if (x >= 4294967296) { x = 0; M[(INPUT << 8) + 13] = (M[(INPUT << 8) + 13] + 1) >>> 0; }
+      M[(INPUT << 8) + 12] = x;
+      fillBlock(M, ZERO, INPUT, ADDR, 0);
+      fillBlock(M, ZERO, ADDR, ADDR, 0);
+    }
+
+    var currOffset, prevOffset, startingIndex, pseudoLo, pseudoHi, refLane, refIndex;
+
+    for (var pass = 0; pass < passes; pass++) {
+      for (var slice = 0; slice < 4; slice++) {
+        for (var lane = 0; lane < lanes; lane++) {
+          var independent = (type === 1) ||
+            (type === 2 && pass === 0 && slice < 2);
+          if (independent) {
+            var ib = INPUT << 8;
+            M.fill(0, ib, ib + 256);
+            M[ib] = pass; M[ib + 2] = lane; M[ib + 4] = slice;
+            M[ib + 6] = memoryBlocks; M[ib + 8] = passes; M[ib + 10] = type;
+          }
+          startingIndex = 0;
+          if (pass === 0 && slice === 0) {
+            startingIndex = 2;
+            if (independent) nextAddresses();
+          }
+          currOffset = lane * laneLength + slice * segmentLength + startingIndex;
+          prevOffset = (currOffset % laneLength === 0)
+            ? currOffset + laneLength - 1 : currOffset - 1;
+
+          for (var idx = startingIndex; idx < segmentLength; idx++, currOffset++, prevOffset++) {
+            if (currOffset % laneLength === 1) prevOffset = currOffset - 1;
+
+            if (independent) {
+              if (idx % 128 === 0) nextAddresses();
+              var aw = (ADDR << 8) + (idx % 128) * 2;
+              pseudoLo = M[aw]; pseudoHi = M[aw + 1];
+            } else {
+              var pw = prevOffset << 8;
+              pseudoLo = M[pw]; pseudoHi = M[pw + 1];
+            }
+
+            refLane = pseudoHi % lanes;
+            if (pass === 0 && slice === 0) refLane = lane;
+
+            refIndex = indexAlpha(pass, slice, idx, pseudoLo, refLane === lane);
+            fillBlock(M, prevOffset, refLane * laneLength + refIndex, currOffset, pass === 0 ? 0 : 1);
+          }
+        }
+      }
+    }
+
+    // Final: XOR last block of each lane, then H'
+    var last = new Uint8Array(1024);
+    var lastWords = new Uint32Array(256);
+    for (l = 0; l < lanes; l++) {
+      var base = (l * laneLength + laneLength - 1) << 8;
+      for (i = 0; i < 256; i++) lastWords[i] ^= M[base + i];
+    }
+    for (i = 0; i < 256; i++) {
+      last[4 * i] = lastWords[i] & 255;
+      last[4 * i + 1] = (lastWords[i] >>> 8) & 255;
+      last[4 * i + 2] = (lastWords[i] >>> 16) & 255;
+      last[4 * i + 3] = (lastWords[i] >>> 24) & 255;
+    }
+    var out = new Uint8Array(outLen);
+    blake2bLong(out, outLen, last);
+    M.fill(0); h0.fill(0); seed.fill(0); b1024.fill(0); last.fill(0); lastWords.fill(0);
+    SC.fill(0); OLD.fill(0); REG.fill(0);
+    return out;
+  }
+
+  var api = {
+    blake2b: blake2b,
+    blake2bLong: blake2bLong,
+    argon2: argon2,
+    argon2id: function (password, salt, mCost, tCost, p, outLen) {
+      return argon2(2, password, salt, mCost, tCost, p, outLen, null, null, 0x13);
+    }
+  };
+  if (typeof module !== 'undefined' && module.exports) module.exports = api;
+  else root.Argon2Ref = api;
+})(typeof globalThis !== 'undefined' ? globalThis : this);
+</script>
+<script>
+/* 64 Locks v2 — derivation core. Depends on Argon2Ref (inline above). */
+(function () {
+  'use strict';
+  var Argon2Ref = globalThis.Argon2Ref;
+  var te = new TextEncoder();
+
+  function toHex(bytes) {
+    var s = '';
+    for (var i = 0; i < bytes.length; i++) s += bytes[i].toString(16).padStart(2, '0');
+    return s;
+  }
+  function b64(bytes) {
+    var s = '', B = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+    for (var i = 0; i < bytes.length; i += 3) {
+      var b0 = bytes[i], b1 = i + 1 < bytes.length ? bytes[i + 1] : 0, b2 = i + 2 < bytes.length ? bytes[i + 2] : 0;
+      s += B[b0 >> 2] + B[((b0 & 3) << 4) | (b1 >> 4)] + (i + 1 < bytes.length ? B[((b1 & 15) << 2) | (b2 >> 6)] : '=')
+         + (i + 2 < bytes.length ? B[b2 & 63] : '=');
+    }
+    return s;
+  }
+  function b64bytes(s) {
+    if (!/^[A-Za-z0-9+/]*={0,2}$/.test(s) || s.length % 4 !== 0) return null;
+    var B = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/', out = [];
+    for (var i = 0; i < s.length; i += 4) {
+      var n = 0, pad = 0;
+      for (var j = 0; j < 4; j++) {
+        var c = s[i + j];
+        if (c === '=') { pad++; n <<= 6; continue; }
+        var v = B.indexOf(c);
+        if (v < 0) return null;
+        n = (n << 6) | v;
+      }
+      out.push((n >> 16) & 255);
+      if (pad < 2) out.push((n >> 8) & 255);
+      if (pad < 1) out.push(n & 255);
+    }
+    return new Uint8Array(out);
+  }
+  function sha256(bytes) {
+    return crypto.subtle.digest('SHA-256', bytes).then(function (d) { return new Uint8Array(d); });
+  }
+  function hmac(keyBytes, msgStr) {
+    return crypto.subtle.importKey('raw', keyBytes, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign'])
+      .then(function (k) { return crypto.subtle.sign('HMAC', k, te.encode(msgStr)); })
+      .then(function (d) { return new Uint8Array(d); });
+  }
+  function concat(a, b) {
+    var out = new Uint8Array(a.length + b.length);
+    out.set(a, 0); out.set(b, a.length);
+    return out;
+  }
+  function le32(n) { return new Uint8Array([n & 255, (n >>> 8) & 255, (n >>> 16) & 255, (n >>> 24) & 255]); }
+
+  // --- normalization (spec-exact) ---
+  function normalizePass(s) { return s.normalize('NFKD').trim().replace(/\s+/g, ' '); }
+  function normalizeSite(s) { return s.normalize('NFC').trim(); }
+
+  // --- strength estimate: conservative, never assumes randomness it cannot verify ---
+  var COMMON = ['password', '123456', '12345678', 'qwerty', 'abc123', 'letmein', 'welcome', 'monkey', 'dragon', 'iloveyou',
+    'admin', 'login', 'passw0rd', 'master', 'sunshine', 'football', 'baseball', 'princess', 'trustno1', 'shadow', 'superman',
+    'michael', 'jordan', 'harley', 'hunter', 'ranger', 'buster', 'soccer', 'hockey', 'killer', 'george', 'charlie', 'andrew',
+    'michelle', 'jessica', 'pepper', 'daniel', 'access', 'thomas', 'robert', 'joshua', 'love', 'secret', 'test', 'hello',
+    'freedom', 'whatever', 'correct horse battery staple', 'tr0ub4dor', 'qwertyuiop', 'asdfghjkl', 'zxcvbnm', '111111',
+    '000000', 'changeme', 'default', 'letmein123', 'password1', 'iloveyou1'];
+  function poolOf(s) {
+    var n = 0;
+    if (/[a-z]/.test(s)) n += 26;
+    if (/[A-Z]/.test(s)) n += 26;
+    if (/[0-9]/.test(s)) n += 10;
+    if (/[^A-Za-z0-9]/.test(s)) n += 33;
+    return n || 1;
+  }
+  // effective length: repeats and straight runs (abc, 321) count for nothing, re-used characters for half
+  function effLen(s) {
+    var seen = {}, eff = 0, prev = -1, pd = 0, k, ch, d, add;
+    for (k = 0; k < s.length; k++) {
+      ch = s.charCodeAt(k); d = prev < 0 ? 0 : ch - prev; add = 1;
+      if (prev >= 0 && d === 0) add = 0;
+      else if ((d === 1 || d === -1) && d === pd) add = 0;
+      else if (seen[ch]) add = 0.5;
+      seen[ch] = 1; eff += add; pd = d; prev = ch;
+    }
+    return eff;
+  }
+  // NIST SP 800-63 (rev. 1) style curve for human-chosen text
+  function human(n) {
+    var b = 0;
+    if (n >= 1) b += 4;
+    if (n > 1) b += 2 * Math.min(n - 1, 7);
+    if (n > 8) b += 1.5 * Math.min(n - 8, 12);
+    if (n > 20) b += n - 20;
+    return b;
+  }
+  function strengthInfo(p, attested) {
+    var norm = normalizePass(p);
+    if (!norm) return { bits: 0, basis: 'empty' };
+    var flat = norm.toLowerCase().replace(/[^a-z0-9]/g, ''), i, c;
+    for (i = 0; i < COMMON.length; i++) {
+      c = COMMON[i].replace(/[^a-z0-9]/g, '');
+      if (flat === c || (c.length >= 8 && flat.indexOf(c) >= 0)) return { bits: 8, basis: 'it matches a commonly used password' };
+    }
+    if (attested) {
+      var toks = norm.split(' '), seen = {}, d = 0;
+      if (toks.length >= 4 && toks.every(function (t) { return /^[A-Za-z]{2,12}$/.test(t); })) {
+        toks.forEach(function (t) { t = t.toLowerCase(); if (!seen[t]) { seen[t] = 1; d++; } });
+        return { bits: d * 12.925, basis: d + ' distinct random words from a 7,776-word list, as you stated; not verified' };
+      }
+      return { bits: effLen(norm) * Math.log2(poolOf(norm)), basis: 'random characters, as you stated; not verified' };
+    }
+    return { bits: human(effLen(norm)), basis: 'conservative estimate for a phrase you invented' };
+  }
+  function strengthBits(p, attested) { return strengthInfo(p, attested).bits; }
+
+  // --- web mode mapping: every draw is rejection-sampled, so every alphabet is unbiased ---
+  var LOWER = 'abcdefghijklmnopqrstuvwxyz', UPPER = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ',
+      DIGIT = '0123456789', ALPHA = LOWER + UPPER + DIGIT;
+  function webDraws(tag) {
+    var buf = [], pos = 0, ctr = 0;
+    function refill() {
+      return hmac(tag, '64locks/v2/webstream|' + (ctr++)).then(function (b) { for (var i = 0; i < b.length; i++) buf.push(b[i]); });
+    }
+    return function uniform(n) {            // uniform integer in [0, n), n <= 256
+      var lim = 256 - (256 % n);
+      function draw() {
+        if (pos >= buf.length) return refill().then(draw);
+        var b = buf[pos++];
+        return b < lim ? Promise.resolve(b % n) : draw();
+      }
+      return draw();
+    };
+  }
+  function webPasswordAsync(tag) {
+    var u = webDraws(tag), chars = [], p = Promise.resolve(), i;
+    function pick(set) { return function () { return u(set.length).then(function (x) { chars.push(set[x]); }); }; }
+    p = p.then(pick(LOWER)).then(pick(UPPER)).then(pick(DIGIT));
+    for (i = 0; i < 17; i++) p = p.then(pick(ALPHA));
+    p = p.then(function () {
+      var step = Promise.resolve();
+      function swap(j) { return function () { return u(j + 1).then(function (r) { var t = chars[j]; chars[j] = chars[r]; chars[r] = t; }); }; }
+      for (var j = chars.length - 1; j > 0; j--) step = step.then(swap(j));
+      return step;
+    });
+    return p.then(function () { return chars.join(''); });
+  }
+
+  // --- derivation ---
+  // mode: 'hex64' | 'hex32' | 'web'. cache: {map} (in memory only, never persisted).
+  function fpAsync(hex64) {
+    return sha256(te.encode('64locks/v2/fp|' + hex64)).then(function (d) { return toHex(d).slice(0, 8); });
+  }
+  // the cache index is a keyed digest: the passphrase itself never becomes a Map key
+  function cacheTag(K, pass, label, n) { return hmac(K, '64locks/v2/cache|' + label + '|' + n + '|' + pass).then(toHex); }
+  function cacheGet(cache, k) {
+    if (!cache || !cache.map.has(k)) return null;
+    var v = cache.map.get(k); cache.map.delete(k); cache.map.set(k, v);
+    return v;
+  }
+  function cachePut(cache, k, v) {
+    if (!cache) return;
+    cache.map.set(k, v);
+    while (cache.map.size > 8) cache.map.delete(cache.map.keys().next().value);
+  }
+
+  function derive(K, pass, label, n, mode, cache) {
+    return cacheTag(K, pass, label, n).then(function (ck) {
+      var cached = cacheGet(cache, ck);
+      return Promise.all([
+        hmac(K, '64locks/v2/salt|' + label + '|' + n),
+        hmac(K, '64locks/v2/pass|' + pass),
+        mode === 'web' ? hmac(K, '64locks/v2/salt|' + label + '|web|' + n) : null
+      ]).then(function (r) {
+        var salt = r[0], ikm = r[1], saltW = r[2];
+        function done(res) { salt.fill(0); ikm.fill(0); if (saltW) saltW.fill(0); return res; }
+        function hexPart() {
+          if (cached) return Promise.resolve(cached);
+          var tag = Argon2Ref.argon2id(ikm, salt, 65536, 3, 1, 32), hex64 = toHex(tag);
+          tag.fill(0);
+          return fpAsync(hex64).then(function (fp) { var v = { hex64: hex64, fp: fp }; cachePut(cache, ck, v); return v; });
+        }
+        if (mode === 'web') {
+          var tagW = Argon2Ref.argon2id(ikm, saltW, 65536, 3, 1, 32);
+          return webPasswordAsync(tagW).then(function (pw) {
+            tagW.fill(0);
+            return hexPart().then(function (v) { return done({ password: pw, hex64: v.hex64, fp: v.fp }); });
+          });
+        }
+        return hexPart().then(function (v) {
+          return done({ password: mode === 'hex32' ? v.hex64.slice(0, 32) : v.hex64, hex64: v.hex64, fp: v.fp });
+        });
+      });
+    });
+  }
+
+  // --- official test vectors (RFC 9106 section 5, BLAKE2b) ---
+  var RFC_TAGS = [
+    '512b391b6f1162975371d30919734294f868e3be3984f3c1a13a4db9fabe4acb',
+    'c814d9d1dc7f37aa13f0d77f2494bda1c8de6b016dd388d29952a4c4672b6ce8',
+    '0d640df58d78766c08c037a34a8b53c9d01ef0452d75b65eb52520e96b01e659'
+  ];
+  var B2_ABC = 'ba80a53f981c4d0d6a2797b69f12f6e94c212f14685ac4b74b12bb6fdbffa2d17d87c5392aab792dc252d5de4533cc9518d38aa8dbf1925ab92386edd4009923';
+  function fillBytes(n, v) { return new Uint8Array(n).fill(v); }
+  function rfcCheck(full) {
+    var res = [], names = ['Argon2d', 'Argon2i', 'Argon2id'], t, tag;
+    for (t = 0; t < 3; t++) {
+      tag = Argon2Ref.argon2(t, fillBytes(32, 1), fillBytes(16, 2), 32, 3, 4, 32, fillBytes(8, 3), fillBytes(12, 4), 0x13);
+      res.push({ name: 'RFC 9106 ' + names[t] + ' vector', ok: toHex(tag) === RFC_TAGS[t] });
+    }
+    res.push({ name: 'BLAKE2b-512("abc") vector', ok: toHex(Argon2Ref.blake2b(64, [te.encode('abc')])) === B2_ABC });
+    if (full) {
+      tag = Argon2Ref.argon2id(te.encode('password'), te.encode('somesalt'), 65536, 2, 1, 32);
+      res.push({ name: 'Argon2id 64 MiB reference vector (password / somesalt)', ok: b64(tag).replace(/=+$/, '') === 'CTFhFdXPJO1aFaMaO6Mm5c8y7cJHAph8ArZWb2GRPPc' });
+    }
+    return res;
+  }
+
+  // --- key file ---
+  // New key files carry a 16-hex id from a domain-separated hash. Legacy 8-hex ids (plain SHA-256) still load.
+  function keyIdFull(K) {
+    return sha256(concat(te.encode('64locks/v2/keyid|'), K)).then(function (d) { return toHex(d).slice(0, 16); });
+  }
+  function groupId(id) { return id.replace(/(.{4})(?=.)/g, '$1-'); }
+  function keyFileText(K, dateIso) {
+    return keyIdFull(K).then(function (id) {
+      return {
+        id: id,
+        text: '64LOCKS-KEY v2\nid: ' + id + '\ncreated: ' + (dateIso || new Date().toISOString().slice(0, 10)) +
+              '\nkey: ' + b64(K) + '\n'
+      };
+    });
+  }
+
+  globalThis.V2CORE = {
+    normalizePass: normalizePass,
+    normalizeSite: normalizeSite,
+    strengthBits: strengthBits,
+    strengthInfo: strengthInfo,
+    hmacHex: function (K, m) { return hmac(K, m).then(toHex); },
+    groupId: groupId,
+    rfcCheck: rfcCheck,
+    derive: derive,
+    webPassword: function (tag) { return webPasswordAsync(tag); },
+    toHex: toHex,
+    b64: b64,
+    b64bytes: b64bytes,
+    keyFileText: keyFileText,
+    sha256: sha256,
+    argon2id: Argon2Ref.argon2id,
+    GOLDEN: [
+  {
+    "label": "example.com",
+    "n": 1,
+    "normalizedPass": "correct horse battery staple",
+    "hex64": "190704f7b9dc31b054413e25b7809b8fed190d4ec3616bff70800c5ddf9be868",
+    "hex32": "190704f7b9dc31b054413e25b7809b8f",
+    "web": "YP31yamrzAT4PzPCMK4G",
+    "webTagHex": "9340f18adaae045d1ca1882e3e4ad90a878e358448b17fe5eaa4b96ae789d9c7",
+    "fp": "21c5918c",
+    "passphrase": "correct horse battery staple",
+    "siteInput": "www.Example.com",
+    "keyHex": "3f9a2c51d84b7e60af13c2b9e5d8f047a1c6b39e2d5f8a01b4c7e3d9f2a6b8c4"
+  },
+  {
+    "label": "github.com",
+    "n": 2,
+    "normalizedPass": "Tricky Wo\u0308rld file",
+    "hex64": "8d743a7e57dd6234f71a0f4d3c99b025fcde3860930f78ff63c50aab2895ffdf",
+    "hex32": "8d743a7e57dd6234f71a0f4d3c99b025",
+    "web": "b4Iy9Wvx8Buuul6TZ3o0",
+    "webTagHex": "d86820308aa578cbfc3816e001bbbe0c6260f8ba2d744bdeb22bf210cd520060",
+    "fp": "fd7c58a5",
+    "passphrase": "  Tricky   W\u00f6rld \ufb01le ",
+    "siteInput": "GitHub.COM",
+    "keyHex": "a17d5e93c2f8b46a0d1e7c5b3a9f2e8d6c4b0a7f5e3d1c9b7a5f3e1d9c7b5a3f"
+  },
+  {
+    "label": "bank.example",
+    "n": 3,
+    "normalizedPass": "Passphrase VIXI test PASS",
+    "hex64": "e4fa95c05482ab10fcebfa48d9b31914baf4d219e6b4afdededcfc2cb31329cd",
+    "hex32": "e4fa95c05482ab10fcebfa48d9b31914",
+    "web": "WKIvtsGTf8J6GYLzVUbb",
+    "webTagHex": "f7619e6c864de89e3cd859d42493901439045e333901cda880af04b3b92504e3",
+    "fp": "f11f1403",
+    "passphrase": "\uff30assphrase \u2165\u216a \uff54\uff45\uff53\uff54 PASS",
+    "siteInput": "  WWW.Bank.Example  ",
+    "keyHex": "c0ffee15ba5e7a9d3c1f0e2d4b6a8c0e1d3f5a7b9c1e3d5f7a9b1c3e5d7f9a1b"
+  }
+]
+  };
+
+  // parseKeyFile: strict, loud failures. Resolves {K, id, legacy} or rejects with Error.
+  globalThis.V2CORE.parseKeyFile = function (text) {
+    text = String(text);
+    if (text.length > 4096) return Promise.reject(new Error('This file is larger than the 4 KB limit for a key file. Nothing was loaded.'));
+    var lines = text.replace(/^\uFEFF/, '').trim().split(/\r?\n/).map(function (l) { return l.trim(); });
+    if (lines.length > 20) return Promise.reject(new Error('Too many lines for a key file. Nothing was loaded.'));
+    if (lines.length === 0 || lines[0].indexOf('64LOCKS-KEY') !== 0) {
+      return Promise.reject(new Error('This file does not look like a 64 Locks key file: the first line is not a 64LOCKS-KEY header. Nothing was loaded.'));
+    }
+    if (lines[0] !== '64LOCKS-KEY v2') {
+      return Promise.reject(new Error('Unsupported key file header: "' + lines[0].slice(0, 40) + '". Only "64LOCKS-KEY v2" is supported. Nothing was loaded.'));
+    }
+    var id = null, keyB64 = null;
+    for (var i = 1; i < lines.length; i++) {
+      if (/^id:/i.test(lines[i])) id = lines[i].slice(3).trim();
+      else if (/^key:/i.test(lines[i])) keyB64 = lines[i].slice(4).trim();
+    }
+    if (!id) return Promise.reject(new Error('Key file has no "id:" line. Nothing was loaded.'));
+    if (!keyB64) return Promise.reject(new Error('Key file has no "key:" line. Nothing was loaded.'));
+    if (!/^([0-9a-f]{8}|[0-9a-f]{16})$/i.test(id)) return Promise.reject(new Error('The "id:" line is not 8 or 16 hex characters. Nothing was loaded.'));
+    var K = b64bytes(keyB64);
+    if (!K || K.length !== 32) {
+      return Promise.reject(new Error('The "key:" line is not valid base64 encoding exactly 32 bytes (got ' + (K ? K.length + ' bytes' : 'invalid base64') + '). The file is corrupt or truncated; nothing was loaded.'));
+    }
+    var legacy = id.length === 8;
+    var want = legacy ? sha256(K).then(function (d) { return toHex(d).slice(0, 8); }) : keyIdFull(K);
+    return want.then(function (w) {
+      if (w !== id.toLowerCase()) {
+        throw new Error('Key file integrity check failed: the id line says ' + id.toLowerCase() + ' but the key hashes to ' + w + '. The file is corrupt; nothing was loaded.');
+      }
+      return { K: K, id: id.toLowerCase(), legacy: legacy };
+    });
+  };
+
+  // parseTypedKey: whole key file text (id checked), or a bare key as 44 base64 chars / 64 hex digits (no id to check).
+  globalThis.V2CORE.parseTypedKey = function (text) {
+    text = String(text);
+    if (text.length > 4096) return Promise.reject(new Error('That text is longer than a key file can be (4 KB limit). Nothing was loaded.'));
+    if (/64LOCKS-KEY/.test(text)) return globalThis.V2CORE.parseKeyFile(text);
+    var m = text.match(/^\s*key:\s*(.+)$/im), raw = (m ? m[1] : text).replace(/[\s\-]/g, ''), K = null, i;
+    if (/^[0-9a-f]{64}$/i.test(raw)) { K = new Uint8Array(32); for (i = 0; i < 32; i++) K[i] = parseInt(raw.substr(2 * i, 2), 16); }
+    else if (/^[A-Za-z0-9+\/]{43}={0,1}$/.test(raw)) K = b64bytes(raw.length === 43 ? raw + '=' : raw);
+    if (!K || K.length !== 32) return Promise.reject(new Error('Could not read that as a key. Paste the whole key file text, or the key alone as 44 base64 characters or 64 hex digits. Nothing was loaded.'));
+    return keyIdFull(K).then(function (id) { return { K: K, id: id, legacy: false, unchecked: true }; });
+  };
+
+})();
+</script>
+<script>
+/* 64 Locks v2 — UI. Depends on V2CORE (inline above). */
+(function () {
+  'use strict';
+  var C = globalThis.V2CORE;
+  var MAX_KEY_FILE = 4096, IDLE_MS = 300000, OUT_MS = 60000, CLIP_MS = 30000, VKEY = '64locks.versions';
+  var $ = function (s) { return document.querySelector(s); };
+  var els = {
+    dropzone: $('#dropzone'), fileInput: $('#file-input'), keyStatus: $('#key-status'),
+    newKeyArea: $('#newkey-area'), newKeyText: $('#newkey-text'), newKeyDl: $('#newkey-dl'), newKeyLead: $('#newkey-lead'), newKeyDone: $('#newkey-done'), newKeyName: $('#newkey-name'),
+    keyTyped: $('#key-typed'), keyUse: $('#key-use'),
+    lock: $('#lock'),
+    pass: $('#pass'), passToggle: $('#pass-toggle'), passRandom: $('#pass-random'), meterBar: $('#meter-bar'), strengthNote: $('#strength-note'),
+    site: $('#site'), siteNote: $('#site-note'), siteNoteBtn: $('#site-note-btn'),
+    terms: $('#terms'), app: $('#app'), termsOk: $('#terms-ok'), termsEnter: $('#terms-enter'), termsReopen: $('#terms-reopen'),
+    version: $('#version'), whyBtn: $('#why-version-btn'), whyBox: $('#why-version'),
+    verNote: $('#ver-note'), verLatest: $('#ver-latest'), verClear: $('#ver-clear'),
+    out: $('#password'), fp: $('#fingerprint'), stale: $('#stale'),
+    copy: $('#copy'), deriveBtn: $('#derive-btn'), copyFallback: $('#copy-fallback'), copyText: $('#copy-text'),
+    spinner: $('#spinner'), status: $('#status'), gate: $('#gate'),
+    selftest: $('#selftest'), stLog: $('#st-log'), stRun: $('#st-run')
+  };
+
+  var state = {
+    K: null, keyId: null, keyName: null, shown: null,
+    lastPassword: null, snapshot: null,
+    deriveToken: 0, timer: null, idleT: null, outT: null, clipT: null,
+    passTok: 0, blocked: false, testing: false,
+    cache: { map: new Map() }
+  };
+
+  function setStatus(msg) { els.status.textContent = msg; }
+  function keyMsg(msg, cls) { els.keyStatus.textContent = msg; els.keyStatus.className = cls || ''; }
+  function hexBytes(s) {
+    var out = new Uint8Array(s.length / 2);
+    for (var i = 0; i < out.length; i++) out[i] = parseInt(s.substr(i * 2, 2), 16);
+    return out;
+  }
+
+  // ---------- startup gate: official vectors must pass before anything is generated ----------
+  var gateRes = C.rfcCheck(false), gateBad = gateRes.filter(function (x) { return !x.ok; });
+  els.gate.hidden = false;
+  if (gateBad.length) {
+    state.blocked = true; els.gate.className = 'gate bad';
+    els.gate.textContent = 'Startup check FAILED (' + gateBad.map(function (x) { return x.name; }).join(', ') + '). Password generation is disabled. Do not use this copy of the page.';
+  } else {
+    els.gate.textContent = 'Startup check passed: Argon2d, Argon2i, Argon2id and BLAKE2b match the official RFC 9106 test vectors.';
+  }
+
+  // ---------- locking, cleanup, idle ----------
+  function clearOut() {
+    clearTimeout(state.outT);
+    els.out.textContent = ''; els.fp.textContent = ''; els.copy.disabled = true;
+    state.lastPassword = null; state.shown = null;
+  }
+  function hideNewKey() {
+    els.newKeyText.value = ''; els.newKeyDl.removeAttribute('href'); els.newKeyArea.hidden = true;
+  }
+  function dlName() { var n = els.newKeyName.value.replace(/[\\\/:*?"<>|\u0000-\u001f]/g, '').trim().slice(0, 80); return n || '64locks-key.txt'; }
+  els.newKeyName.addEventListener('input', function () { els.newKeyDl.setAttribute('download', dlName()); els.newKeyDl.textContent = 'Download ' + dlName(); });
+  function showNewKey(text, lead) {
+    els.newKeyText.value = text;
+    els.newKeyDl.setAttribute('download', dlName()); els.newKeyDl.textContent = 'Download ' + dlName();
+    els.newKeyDl.href = 'data:text/plain;charset=utf-8,' + encodeURIComponent(text);
+    els.newKeyLead.textContent = lead + ' ';
+    els.newKeyArea.hidden = false;
+  }
+  function wipeSecrets(msg) {
+    clearTimeout(state.timer); clearTimeout(state.clipT); state.deriveToken++;
+    if (state.K) state.K.fill(0);
+    state.K = null; state.keyId = null; state.keyName = null; state.snapshot = null;
+    state.cache.map.clear(); state.passTok++;
+    els.pass.value = ''; els.keyTyped.value = ''; clearOut(); hideNewKey();
+    els.copyText.value = ''; els.copyFallback.hidden = true;
+    els.spinner.hidden = true; els.stale.hidden = true; els.verNote.hidden = true; els.verLatest.hidden = true;
+    updateStrength();
+    keyMsg(msg || 'Locked. The key and passphrase were cleared from this page.', '');
+    setStatus('Load a key file to continue.');
+  }
+  function touch() {
+    clearTimeout(state.idleT);
+    if (state.K && !state.testing) state.idleT = setTimeout(function () { wipeSecrets('Locked after 5 minutes of inactivity.'); }, IDLE_MS);
+  }
+  ['input', 'click', 'keydown'].forEach(function (ev) { document.addEventListener(ev, touch, true); });
+  window.addEventListener('pagehide', function () { if (!state.testing) wipeSecrets(); });
+  els.lock.addEventListener('click', function () { wipeSecrets(); });
+  els.newKeyDone.addEventListener('click', function () { hideNewKey(); setStatus('Key text erased from this page.'); });
+  function installKey(K, id, name) {
+    if (state.K && state.K !== K) state.K.fill(0);
+    state.K = K; state.keyId = id; state.keyName = name;
+    state.cache.map.clear(); state.snapshot = null; state.shown = null;
+    touch();
+  }
+
+  // ---------- site name: used exactly as typed ----------
+  function siteLabel() { return C.normalizeSite(els.site.value); }
+  els.site.addEventListener('input', onInput);
+  els.siteNoteBtn.addEventListener('click', function () {
+    var open = els.siteNote.hidden;
+    els.siteNote.hidden = !open;
+    els.siteNoteBtn.setAttribute('aria-expanded', String(open));
+  });
+
+  // ---------- passphrase strength ----------
+  function updateStrength() {
+    var info = C.strengthInfo(els.pass.value, els.passRandom.checked), bits = info.bits;
+    var bar = els.meterBar, note = els.strengthNote;
+    bar.style.width = Math.min(100, bits) + '%';
+    bar.className = bits < 40 ? '' : (bits < 60 ? 'warn' : 'ok');
+    note.className = bits < 40 ? 'bad' : (bits < 60 ? 'warn' : 'ok');
+    if (!els.pass.value) { note.textContent = ''; bar.style.width = '0%'; return; }
+    var b = Math.round(bits) + ' bits (' + info.basis + ')';
+    if (bits < 40) note.textContent = 'Very weak: about ' + b + '. Do not use: below the 40-bit hard limit.';
+    else if (bits < 60) note.textContent = 'Weak: about ' + b + '. Below the recommended 60 bits.';
+    else note.textContent = 'OK: about ' + b + '.';
+  }
+  els.pass.addEventListener('input', function () { state.passTok++; onInput(); });
+  els.passRandom.addEventListener('change', updateStrength);
+  els.passToggle.addEventListener('click', function () {
+    var show = els.pass.type === 'password';
+    els.pass.type = show ? 'text' : 'password';
+    els.passToggle.textContent = show ? 'Hide passphrase' : 'Show passphrase';
+    els.passToggle.setAttribute('aria-pressed', String(show));
+  });
+
+  // ---------- version memory: persistent, per key file, labels stored only as keyed hashes ----------
+  function readVerStore() {
+    try { var o = JSON.parse(localStorage.getItem(VKEY) || '{}'); return (o && typeof o === 'object' && !Array.isArray(o)) ? o : {}; }
+    catch (e) { return {}; }
+  }
+  function writeVerStore(o) { try { localStorage.setItem(VKEY, JSON.stringify(o)); } catch (e) { /* private mode */ } }
+  function verTag(label) { return C.hmacHex(state.K, '64locks/v2/vtrack|' + label).then(function (h) { return h.slice(0, 16); }); }
+  function recordedVersion(label) {
+    if (!state.K || !label) return Promise.resolve(0);
+    var id = state.keyId;
+    return verTag(label).then(function (t) { var m = readVerStore()[id]; return (m && m[t]) || 0; });
+  }
+  function recordVersion(label, n) {
+    if (!state.K || !label) return Promise.resolve();
+    var id = state.keyId;
+    return verTag(label).then(function (t) {
+      var s = readVerStore(), m = s[id] || (s[id] = {}), ks;
+      if ((m[t] || 0) < n) m[t] = n;
+      ks = Object.keys(m); if (ks.length > 500) delete m[ks[0]];
+      writeVerStore(s);
+    });
+  }
+  function refreshVerNote() {
+    var label = siteLabel(), n = parseInt(els.version.value, 10) || 1;
+    return recordedVersion(label).then(function (max) {
+      if (max > n) {
+        els.verNote.textContent = 'You last copied version ' + max + ' for this site with this key file. Version ' + n + ' regenerates an older password.';
+        els.verNote.hidden = false; els.verLatest.hidden = false; els.verLatest.setAttribute('data-v', String(max));
+      } else { els.verNote.hidden = true; els.verLatest.hidden = true; }
+    });
+  }
+  els.version.addEventListener('input', function () {
+    var v = parseInt(els.version.value, 10);
+    if (isNaN(v) || v < 1) { els.version.value = '1'; v = 1; }
+    if (v > 9999) els.version.value = '9999';
+    onInput();
+  });
+  els.verLatest.addEventListener('click', function () { els.version.value = els.verLatest.getAttribute('data-v') || '1'; onInput(); });
+  els.verClear.addEventListener('click', function () {
+    if (!state.keyId) { setStatus('Load a key file first.'); return; }
+    var s = readVerStore(); delete s[state.keyId]; writeVerStore(s);
+    refreshVerNote(); setStatus('Remembered versions for this key file were erased from this browser.');
+  });
+  els.whyBtn.addEventListener('click', function () {
+    var open = els.whyBox.hidden;
+    els.whyBox.hidden = !open;
+    els.whyBtn.setAttribute('aria-expanded', String(open));
+  });
+
+  // ---------- mode ----------
+  function getMode() { var r = document.querySelector('input[name="mode"]:checked'); return r ? r.value : 'hex64'; }
+  Array.prototype.forEach.call(document.querySelectorAll('input[name="mode"]'), function (r) { r.addEventListener('change', onInput); });
+
+  // ---------- derive pipeline (snapshots never hold the passphrase) ----------
+  function currentInputs() {
+    return {
+      keyId: state.keyId, pass: C.normalizePass(els.pass.value), passTok: state.passTok,
+      label: siteLabel(), n: Math.min(9999, parseInt(els.version.value, 10) || 1), mode: getMode()
+    };
+  }
+  function lite(a) { return { keyId: a.keyId, passTok: a.passTok, label: a.label, n: a.n, mode: a.mode }; }
+  function changed(a, b) { return a.keyId !== b.keyId || a.passTok !== b.passTok || a.label !== b.label || a.n !== b.n || a.mode !== b.mode; }
+  function showStale(msg) { els.stale.textContent = msg; els.stale.hidden = false; els.out.classList.add('stale-out'); }
+  function onInput() {
+    updateStrength();
+    if (state.snapshot && changed(state.snapshot, lite(currentInputs()))) {
+      showStale('Inputs changed after this password was generated, so the output below may be out of date. A new one is being derived.');
+    }
+    refreshVerNote();
+    clearTimeout(state.timer);
+    state.timer = setTimeout(derive, 400);
+  }
+  function derive() {
+    clearTimeout(state.timer);
+    var token = ++state.deriveToken;
+    var inp = currentInputs();
+    els.stale.hidden = true;
+    els.out.classList.remove('stale-out');
+    if (state.blocked) { clearOut(); setStatus('The startup check failed, so generation is disabled.'); return Promise.resolve(); }
+    if (!state.K) { clearOut(); setStatus('Load a key file first (step 1).'); return Promise.resolve(); }
+    if (!inp.pass) { clearOut(); setStatus('Enter a passphrase (step 2).'); return Promise.resolve(); }
+    if (!inp.label) { clearOut(); setStatus('Enter a site name (step 3).'); return Promise.resolve(); }
+    els.spinner.hidden = false;
+    setStatus('Deriving password: Argon2id, 64 MiB, 3 passes. This takes a few seconds…');
+    return new Promise(function (resolve) { setTimeout(resolve, 30); })
+      .then(function () {
+        var t0 = performance.now();
+        return C.derive(state.K, inp.pass, inp.label, inp.n, inp.mode, state.cache)
+          .then(function (r) { r.ms = Math.round(performance.now() - t0); return r; });
+      })
+      .then(function (r) {
+        if (token !== state.deriveToken) return;
+        els.spinner.hidden = true;
+        if (changed(lite(inp), lite(currentInputs()))) showStale('Inputs changed while deriving, so the output below may be out of date. A new one is being derived.');
+        state.snapshot = lite(inp);
+        state.shown = { label: inp.label, n: inp.n };
+        state.lastPassword = r.password;
+        els.out.textContent = r.password;
+        els.fp.textContent = 'Fingerprint: ' + r.fp + '  (SHA-256("64locks/v2/fp|" + hex64), first 8 hex)';
+        els.copy.disabled = false;
+        clearTimeout(state.outT);
+        if (!state.testing) state.outT = setTimeout(function () {
+          clearOut(); state.snapshot = null;
+          setStatus('Password hidden after 60 seconds. Press "Derive again" to show it.');
+        }, OUT_MS);
+        setStatus('Password ready (' + inp.mode + ' mode, derived in ' + r.ms + ' ms).');
+      })
+      .catch(function (e) {
+        if (token !== state.deriveToken) return;
+        els.spinner.hidden = true; clearOut();
+        setStatus('Error: ' + (e && e.message ? e.message : e));
+      });
+  }
+  els.deriveBtn.addEventListener('click', function () { derive(); });
+
+  // ---------- key file ----------
+  function acceptKey(r, name) {
+    installKey(r.K, r.id, name || 'key file');
+    hideNewKey();
+    var msg = (r.typed ? 'Key accepted from typed text' : 'Key file loaded: ' + state.keyName) + ' (fingerprint ' + C.groupId(r.id) + ').';
+    if (r.unchecked) msg += ' It had no id line, so a typo cannot be detected. Compare this fingerprint with your backup before relying on it.';
+    if (r.legacy) {
+      msg += ' This key uses the old 8-character id. An upgraded copy of the same key is offered below; your passwords do not change.';
+      C.keyFileText(r.K).then(function (u) { showNewKey(u.text, 'Upgraded copy (same key, longer id).'); });
+    }
+    keyMsg(msg, 'ok');
+    if (!r.typed) { try { localStorage.setItem('64locks.keyName', state.keyName); } catch (e) { /* private mode etc. */ } }
+    onInput();
+  }
+  function loadKeyText(text, name, typed) {
+    return (typed ? C.parseTypedKey(text) : C.parseKeyFile(text)).then(function (r) {
+      r.typed = !!typed;
+      acceptKey(r, typed ? 'typed key' : name);
+      return true;
+    }).catch(function (e) {
+      if (state.K) state.K.fill(0);
+      state.K = null; state.keyId = null;
+      clearOut();
+      keyMsg('Key rejected: ' + (e && e.message ? e.message : e), 'err');
+      setStatus('No key loaded.');
+      return false;
+    });
+  }
+  els.keyUse.addEventListener('click', function () {
+    var t = els.keyTyped.value;
+    if (!t.trim()) { keyMsg('Type or paste a key first.', 'err'); return; }
+    loadKeyText(t, '', true).then(function (okay) { if (okay) els.keyTyped.value = ''; });
+  });
+  function readFile(f) {
+    if (!f) return;
+    if (f.size > MAX_KEY_FILE) {
+      keyMsg('Key file rejected: ' + f.name + ' is ' + f.size + ' bytes, over the ' + MAX_KEY_FILE + ' byte limit. A key file is about 150 bytes. Nothing was read.', 'err');
+      return;
+    }
+    f.text().then(function (t) { loadKeyText(t, String(f.name).slice(0, 80)); })
+      .catch(function () { keyMsg('Could not read the file: ' + f.name, 'err'); });
+  }
+  els.dropzone.addEventListener('click', function (e) {
+    if (e.target === els.dropzone || e.target.tagName === 'P' || e.target.tagName === 'STRONG') els.fileInput.click();
+  });
+  $('#btn-pick').addEventListener('click', function () { els.fileInput.click(); });
+  els.dropzone.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); els.fileInput.click(); }
+  });
+  ['dragenter', 'dragover'].forEach(function (ev) {
+    els.dropzone.addEventListener(ev, function (e) { e.preventDefault(); els.dropzone.classList.add('drag'); });
+  });
+  ['dragleave', 'drop'].forEach(function (ev) {
+    els.dropzone.addEventListener(ev, function (e) { e.preventDefault(); els.dropzone.classList.remove('drag'); });
+  });
+  els.dropzone.addEventListener('drop', function (e) {
+    e.preventDefault();
+    var fl = e.dataTransfer && e.dataTransfer.files;
+    if (fl && fl.length > 1) { keyMsg('Drop one key file at a time. Nothing was loaded.', 'err'); return; }
+    readFile(fl && fl[0]);
+  });
+  els.fileInput.addEventListener('change', function () {
+    readFile(els.fileInput.files && els.fileInput.files[0]);
+    els.fileInput.value = '';
+  });
+
+  $('#btn-newkey').addEventListener('click', function () {
+    var K = new Uint8Array(32);
+    crypto.getRandomValues(K);
+    C.keyFileText(K).then(function (r) {
+      installKey(K, r.id, '64locks-key.txt');
+      showNewKey(r.text, 'This key is already loaded below; it is not saved anywhere else by this page.');
+      keyMsg('New key created (fingerprint ' + C.groupId(r.id) + ') and loaded. Download it now: it is not saved anywhere else.', 'ok');
+      try { localStorage.setItem('64locks.keyName', state.keyName); } catch (e) { /* ignore */ }
+      onInput();
+    });
+  });
+
+  // ---------- copy ----------
+  function afterCopy(pw, msg) {
+    setStatus(msg + ' The clipboard will be cleared in 30 seconds if the browser allows it. Clipboard history tools may still keep a copy.');
+    clearTimeout(state.clipT);
+    state.clipT = setTimeout(function () {
+      try { if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(''); } catch (e) { /* ignore */ }
+      els.copyText.value = ''; els.copyFallback.hidden = true;
+      setStatus('Tried to clear the clipboard. This cannot be guaranteed; check your clipboard history if you use one.');
+    }, CLIP_MS);
+    if (state.shown && !state.testing) recordVersion(state.shown.label, state.shown.n).then(refreshVerNote);
+  }
+  els.copy.addEventListener('click', function () {
+    var pw = state.lastPassword;
+    if (!pw) return;
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      var t = setTimeout(function () { fallbackCopy(pw); }, 1500);
+      navigator.clipboard.writeText(pw).then(function () { clearTimeout(t); afterCopy(pw, 'Copied to clipboard.'); },
+        function () { clearTimeout(t); fallbackCopy(pw); });
+    } else fallbackCopy(pw);
+  });
+  function fallbackCopy(pw) {
+    els.copyText.value = pw; els.copyFallback.hidden = false;
+    els.copyText.focus(); els.copyText.select();
+    var ok = false;
+    try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+    if (ok) { els.copyFallback.hidden = true; els.copyText.value = ''; afterCopy(pw, 'Copied to clipboard (fallback method).'); }
+    else {
+      setStatus('Automatic copy is blocked in this browser. Copy the password manually from the box below. It is erased after 30 seconds.');
+      clearTimeout(state.clipT);
+      state.clipT = setTimeout(function () { els.copyText.value = ''; els.copyFallback.hidden = true; }, CLIP_MS);
+    }
+  }
+
+  try {
+    var lastName = localStorage.getItem('64locks.keyName');
+    if (lastName) keyMsg('Last used key file: ' + String(lastName).slice(0, 80) + ' (name only; reload the file to use it).', '');
+  } catch (e) { /* ignore */ }
+
+  // ---------- read me and terms: shown before the tool can be used ----------
+  var TKEY = '64locks.terms', TVER = '1';
+  function termsAccepted() { try { return localStorage.getItem(TKEY) === TVER; } catch (e) { return false; } }
+  function showApp() { els.terms.hidden = true; els.app.hidden = false; }
+  els.termsOk.addEventListener('change', function () { els.termsEnter.disabled = !els.termsOk.checked; });
+  els.termsEnter.addEventListener('click', function () {
+    if (!els.termsOk.checked) return;
+    try { localStorage.setItem(TKEY, TVER); } catch (e) { /* private mode: asked again next time */ }
+    showApp();
+    els.site.focus();
+  });
+  els.termsReopen.addEventListener('click', function () { els.app.hidden = true; els.terms.hidden = false; window.scrollTo(0, 0); });
+  if (/[?&]selftest=1/.test(location.search) || termsAccepted()) { els.termsOk.checked = true; els.termsEnter.disabled = false; showApp(); }
+
+  // ---------- self-test mode (?selftest=1): isolated from your real key ----------
+  var SELFTEST = /[?&]selftest=1/.test(location.search), saved = null, LOCKED = ['#sec-key', '#sec-pass', '#sec-site', '#out-card'];
+  var T = {
+    begin: function () {
+      clearTimeout(state.timer); clearTimeout(state.outT); clearTimeout(state.clipT); state.deriveToken++;
+      saved = {
+        K: state.K, keyId: state.keyId, keyName: state.keyName, cache: state.cache, snapshot: state.snapshot, shown: state.shown,
+        lastPassword: state.lastPassword, passTok: state.passTok,
+        pass: els.pass.value, rnd: els.passRandom.checked, site: els.site.value, version: els.version.value,
+        mode: getMode(), out: els.out.textContent, fp: els.fp.textContent, copyDisabled: els.copy.disabled,
+        stale: els.stale.hidden, staleText: els.stale.textContent, keyStatus: els.keyStatus.textContent, keyCls: els.keyStatus.className,
+        status: els.status.textContent
+      };
+      state.testing = true;
+      LOCKED.forEach(function (s) { $(s).inert = true; });
+      return saved;
+    },
+    end: function () {
+      if (!saved) return;
+      var s = saved; saved = null;
+      clearTimeout(state.timer); state.deriveToken++;
+      if (state.K && state.K !== s.K) state.K.fill(0);          // zero only a test key, never yours
+      state.K = s.K; state.keyId = s.keyId; state.keyName = s.keyName; state.cache = s.cache; state.snapshot = s.snapshot; state.shown = s.shown;
+      state.lastPassword = s.lastPassword; state.passTok = s.passTok;
+      els.pass.value = s.pass; els.passRandom.checked = s.rnd; els.site.value = s.site; els.version.value = s.version;
+      var r = document.querySelector('input[name="mode"][value="' + s.mode + '"]'); if (r) r.checked = true;
+      els.out.textContent = s.out; els.fp.textContent = s.fp; els.copy.disabled = s.copyDisabled;
+      els.stale.hidden = s.stale; els.stale.textContent = s.staleText; els.out.classList.remove('stale-out');
+      els.keyStatus.textContent = s.keyStatus; els.keyStatus.className = s.keyCls; els.status.textContent = s.status;
+      els.spinner.hidden = true;
+      LOCKED.forEach(function (x) { $(x).inert = false; });
+      state.testing = false; updateStrength(); touch();
+    },
+    keyRef: function () { return state.K; },
+    setKey: function (K, id) { state.K = K; state.keyId = id; state.keyName = 'test'; state.cache = { map: new Map() }; state.snapshot = null; },
+    setInputs: function (o) {
+      if ('pass' in o) { els.pass.value = o.pass; state.passTok++; updateStrength(); }
+      if ('site' in o) els.site.value = o.site;
+      if ('label' in o) els.site.value = o.label;
+      if ('version' in o) els.version.value = String(o.version);
+      if ('mode' in o) { var m = document.querySelector('input[name="mode"][value="' + o.mode + '"]'); if (m) m.checked = true; }
+    },
+    fireInput: function () { onInput(); },
+    deriveNow: function () { return derive(); },
+    staleVisible: function () { return !els.stale.hidden; },
+    outputText: function () { return els.out.textContent; },
+    statusText: function () { return els.status.textContent; },
+    keyStatusText: function () { return els.keyStatus.textContent; },
+    tryFile: function (f) { readFile(f); }
+  };
+  if (SELFTEST) {
+    globalThis.__64T = T;
+    els.selftest.hidden = false;
+    els.stRun.addEventListener('click', runSelfTest);
+    setTimeout(runSelfTest, 100);
+  }
+
+  function stLine(cls, msg) {
+    var d = document.createElement('div');
+    d.className = cls; d.textContent = msg;
+    els.stLog.appendChild(d);
+  }
+  function runSelfTest() {
+    if (state.testing) return;
+    els.stLog.textContent = ''; els.stRun.disabled = true;
+    var pass = 0, fail = 0, realHex = null, chain = Promise.resolve();
+    function ok(name) { pass++; stLine('pass', 'PASS  ' + name); }
+    function bad(name, detail) { fail++; stLine('fail', 'FAIL  ' + name + (detail ? ' — ' + detail : '')); }
+    function info(msg) { stLine('info', msg); }
+    function add(fn) { chain = chain.then(function () { return new Promise(function (r) { setTimeout(r, 20); }).then(fn); }); }
+    var saved0 = T.begin();
+    info('Self-test started ' + new Date().toISOString() + (saved0.K ? ' (a real key is loaded; it is saved first and restored afterwards)' : ''));
+    add(function () { return saved0.K ? C.sha256(saved0.K).then(function (h) { realHex = C.toHex(h); }) : null; });
+
+    // 1. CSP: strict and consistent with the page's own inline code
+    add(function () {
+      var meta = document.querySelector('meta[http-equiv="Content-Security-Policy"]'), csp = meta ? meta.content : '', dirs = {};
+      csp.split(';').forEach(function (d) { d = d.trim(); if (d) { var p = d.split(/\s+/); dirs[p[0]] = p.slice(1); } });
+      var none = function (k) { return dirs[k] && dirs[k].join(' ') === "'none'"; };
+      var strict = none('default-src') && none('base-uri') && none('form-action') && dirs['script-src'] && dirs['style-src'] &&
+        !/unsafe-(inline|eval)/.test(csp) && !/\*|data:/.test(csp);
+      if (strict) ok("CSP: default-src, base-uri, form-action are 'none'; no unsafe-inline, unsafe-eval, wildcard or data: source");
+      else bad('CSP is strict', csp || 'missing');
+      var items = [].map.call(document.querySelectorAll('script,style'), function (el) {
+        return { dir: el.tagName === 'SCRIPT' ? 'script-src' : 'style-src', text: el.textContent };
+      });
+      return Promise.all(items.map(function (it) {
+        return C.sha256(new TextEncoder().encode(it.text)).then(function (d) { return (dirs[it.dir] || []).indexOf("'sha256-" + C.b64(d) + "'") >= 0; });
+      })).then(function (rs) {
+        var n = rs.filter(Boolean).length;
+        if (n === rs.length) ok('CSP: all ' + n + ' inline scripts and styles are allowed by their own hash');
+        else bad('CSP hashes match the inline code', n + ' of ' + rs.length);
+      });
+    });
+
+    // 2. offline + storage audit
+    add(function () {
+      var clone = document.documentElement.cloneNode(true), mb = clone.querySelector('#meter-bar');
+      if (mb) mb.removeAttribute('style');   // the meter width is set through the CSSOM, which the CSP allows
+      var src = clone.outerHTML;
+      var pats = [
+        ['network fetch call', new RegExp('\\bfet' + 'ch\\s*\\(')], ['XHR API', new RegExp('XML' + 'Http' + 'Request')],
+        ['socket API', new RegExp('Web' + 'Socket')], ['server-sent events', new RegExp('Event' + 'Source')],
+        ['beacon API', new RegExp('send' + 'Beacon')], ['dynamic import call', new RegExp('\\bim' + 'port\\s*\\(')],
+        ['external URL', new RegExp('htt' + 'ps?:\\/\\/')], ['stylesheet link tag', new RegExp('<' + 'link\\b', 'i')],
+        ['script src attribute', new RegExp('<' + 'scr' + 'ipt[^>]*\\bsrc=', 'i')],
+        ['iframe/object/embed', new RegExp('<(ifr' + 'ame|obj' + 'ect|emb' + 'ed)\\b', 'i')],
+        ['inline style attribute', new RegExp('<[a-z][^>]*\\ssty' + 'le=', 'i')], ['inline event handler', new RegExp('<[a-z][^>]*\\son[a-z]+=', 'i')]
+      ], bads = 0, i;
+      for (i = 0; i < pats.length; i++) if (pats[i][1].test(src)) { bads++; bad('offline audit: no ' + pats[i][0], 'pattern found'); }
+      if (!bads) ok('offline audit: no network APIs, imports, external URLs, inline styles or inline handlers');
+      var re = new RegExp('local' + 'Storage\\s*\\.\\s*(\\w+)\\s*\\(\\s*([^,)]+)', 'g'), m, n = 0, other = 0;
+      while ((m = re.exec(src))) { n++; var a = m[2].trim(); if (a !== "'64locks.keyName'" && a !== 'VKEY' && a !== 'TKEY') other++; }
+      if (!other && n >= 5) ok('storage audit: only the key file name, the keyed version table and the terms flag are stored (' + n + ' calls)');
+      else bad('storage audit', n + ' calls, ' + other + ' unexpected');
+    });
+
+    // 3. official vectors
+    add(function () { C.rfcCheck(true).forEach(function (x) { if (x.ok) ok(x.name); else bad(x.name, 'mismatch'); }); });
+
+    // 4. passphrase estimator
+    add(function () {
+      var s = C.strengthInfo, t = function (name, cond) { if (cond) ok('estimator: ' + name); else bad('estimator: ' + name); };
+      t('"password123" is very weak', s('password123').bits < 40);
+      t('a repeated character is not strong', s('aaaaaaaaaaaaaaaa').bits < 20);
+      t('a straight run is not strong', s('abcdefghijkl').bits < 30);
+      t('a random-looking string is not trusted unless you say it is random', s('x7#Kp9!mQ2$vL4@z').bits < 40);
+      t('the same string is strong when stated random', s('x7#Kp9!mQ2$vL4@z', true).bits >= 60);
+      t('six random words count 77.55 bits', Math.abs(s('ember lotus quartz meadow vivid sprout', true).bits - 77.55) < 0.01);
+      t('repeated words count once', s('alpha alpha alpha alpha alpha alpha', true).bits < 20);
+      t('the famous four-word phrase is weak even when stated random', s('correct horse battery staple', true).bits < 40);
+      t('a long invented sentence is not rated like Diceware', s('my dog is called rover and he is great', false).bits < 60);
+    });
+
+    // 5. golden vectors
+    C.GOLDEN.forEach(function (v, idx) {
+      add(function () {
+        var K = hexBytes(v.keyHex), t = performance.now();
+        info('Golden vector ' + (idx + 1) + ' (' + v.label + ', v' + v.n + '): deriving…');
+        return C.derive(K, v.normalizedPass, v.label, v.n, 'hex64', null).then(function (r) {
+          var ms = Math.round(performance.now() - t);
+          if (r.password === v.hex64) ok('vector ' + (idx + 1) + ' hex64 (' + ms + ' ms)'); else bad('vector ' + (idx + 1) + ' hex64', 'got ' + r.password);
+          if (r.fp === v.fp) ok('vector ' + (idx + 1) + ' fingerprint'); else bad('vector ' + (idx + 1) + ' fingerprint', 'got ' + r.fp);
+          return C.derive(K, v.normalizedPass, v.label, v.n, 'hex32', null);
+        }).then(function (r) {
+          if (r.password === v.hex32) ok('vector ' + (idx + 1) + ' hex32'); else bad('vector ' + (idx + 1) + ' hex32', 'got ' + r.password);
+          return C.derive(K, v.normalizedPass, v.label, v.n, 'web', null);
+        }).then(function (r) {
+          if (r.password === v.web) ok('vector ' + (idx + 1) + ' web mode (unbiased sampling)'); else bad('vector ' + (idx + 1) + ' web mode', 'got ' + r.password + ' want ' + v.web);
+        });
+      });
+    });
+
+    // 6. cache hygiene and determinism
+    add(function () {
+      var v = C.GOLDEN[0], K = hexBytes(v.keyHex), cache = { map: new Map() };
+      return C.derive(K, v.normalizedPass, v.label, v.n, 'hex64', cache).then(function (a) {
+        var keys = Array.from(cache.map.keys());
+        if (keys.length === 1 && /^[0-9a-f]{64}$/.test(keys[0]) && keys[0].indexOf(v.normalizedPass) < 0 && keys[0].indexOf(v.label) < 0) ok('cache: the index is a keyed digest, never the passphrase or label');
+        else bad('cache: the index is a keyed digest', keys.join(','));
+        return C.derive(K, v.normalizedPass, v.label, v.n, 'hex64', cache).then(function (b) {
+          if (a.password === b.password && b.password === v.hex64) ok('determinism: a second derivation (cached) is identical');
+          else bad('determinism', a.password + ' vs ' + b.password);
+        });
+      });
+    });
+
+    // 7. web mode properties
+    add(function () {
+      var pend = [], i, tg;
+      for (i = 0; i < 40; i++) { tg = new Uint8Array(32); crypto.getRandomValues(tg); pend.push(C.webPassword(tg)); }
+      return Promise.all(pend).then(function (pws) {
+        var good = pws.every(function (p) { return /^[A-Za-z0-9]{20}$/.test(p) && /[a-z]/.test(p) && /[A-Z]/.test(p) && /[0-9]/.test(p); });
+        var moved = pws.some(function (p) { return !/[a-z]/.test(p[0]); }) && pws.some(function (p) { return !/[A-Z]/.test(p[1]); });
+        if (good) ok('web mode: 40 random tags give 20 characters with a lowercase, an uppercase and a digit'); else bad('web mode character classes');
+        if (moved) ok('web mode: class positions are shuffled, not fixed'); else bad('web mode shuffle');
+      });
+    });
+
+    add(function () {
+      if (C.normalizeSite('  WWW.Example.com ') === 'WWW.Example.com') ok('site name: used exactly as typed (only outer spaces ignored; capitals and www. kept)'); else bad('site name is used exactly as typed');
+      if (C.normalizeSite('www.example.com') !== C.normalizeSite('example.com')) ok('site name: www. is never removed'); else bad('www. must not be removed');
+    });
+
+    // 8. key files
+    var kb64 = function (n) { var b = new Uint8Array(n), i; for (i = 0; i < n; i++) b[i] = i; return C.b64(b); };
+    [
+      ['wrong version header rejected', '64LOCKS-KEY v1\nid: 00000000\nkey: ' + kb64(32), /Unsupported key file header/],
+      ['missing 64LOCKS-KEY header rejected', 'hello world\nkey: ' + kb64(32), /does not look like a 64 Locks key file/],
+      ['corrupted base64 rejected', '64LOCKS-KEY v2\nid: 00000000\nkey: !!!not~base64!!!', /not valid base64/],
+      ['16-byte key rejected', '64LOCKS-KEY v2\nid: 00000000\nkey: ' + kb64(16), /exactly 32 bytes/],
+      ['old-style id mismatch rejected', '64LOCKS-KEY v2\nid: deadbeef\nkey: ' + kb64(32), /integrity check failed/],
+      ['long id mismatch rejected', '64LOCKS-KEY v2\nid: deadbeefdeadbeef\nkey: ' + kb64(32), /integrity check failed/],
+      ['missing key line rejected', '64LOCKS-KEY v2\nid: 00000000\ncreated: 2026-01-01', /no "key:" line/],
+      ['oversized text rejected', '64LOCKS-KEY v2\n' + new Array(5000).join('x'), /4 KB limit/]
+    ].forEach(function (fc) {
+      add(function () {
+        return C.parseKeyFile(fc[1]).then(function () { bad('failure path: ' + fc[0], 'accepted'); }, function (e) {
+          if (fc[2].test(e.message)) ok('failure path: ' + fc[0]); else bad('failure path: ' + fc[0], e.message);
+        });
+      });
+    });
+    add(function () {
+      var K = new Uint8Array(32), i;
+      for (i = 0; i < 32; i++) K[i] = (i * 7) & 255;
+      return C.keyFileText(K, '2026-01-01').then(function (r) {
+        return C.parseKeyFile(r.text).then(function (p) {
+          var same = p.id === r.id && !p.legacy && r.id.length === 16;
+          for (var j = 0; j < 32; j++) if (p.K[j] !== K[j]) same = false;
+          if (same) ok('key file: new 16-character id round-trips'); else bad('key file round-trip');
+          return C.sha256(K).then(function (h) {
+            var legacyId = C.toHex(h).slice(0, 8);
+            if (r.id.slice(0, 8) !== legacyId) ok('key file: the new id is domain-separated from a plain SHA-256 of the key'); else bad('key file id domain separation');
+            return C.parseKeyFile('64LOCKS-KEY v2\nid: ' + legacyId + '\nkey: ' + C.b64(K)).then(function (q) {
+              if (q.legacy && q.id === legacyId) ok('key file: an old 8-character id still loads and is flagged legacy'); else bad('legacy key file');
+            });
+          });
+        });
+      });
+    });
+
+    add(function () {
+      var K = new Uint8Array(32), i;
+      for (i = 0; i < 32; i++) K[i] = (i * 5 + 1) & 255;
+      var hx = C.toHex(K), b = C.b64(K);
+      return Promise.all([C.parseTypedKey(hx), C.parseTypedKey(b), C.parseTypedKey('key: ' + b), C.parseTypedKey(hx.replace(/(.{8})/g, '$1 ')),
+        C.keyFileText(K).then(function (r) { return C.parseTypedKey(r.text); })]).then(function (rs) {
+        var same = rs.every(function (r) { for (var j = 0; j < 32; j++) if (r.K[j] !== K[j]) return false; return true; });
+        if (same && rs[0].unchecked && !rs[4].unchecked) ok('typed key: hex, base64, a "key:" line, spaced hex and a whole key file all give the same key');
+        else bad('typed key formats');
+        return C.parseTypedKey('not a key at all').then(function () { bad('typed key: garbage rejected', 'accepted'); }, function () { ok('typed key: garbage is rejected'); });
+      });
+    });
+
+    // 9. size limit and UI failure paths (inside the saved-and-restored sandbox)
+    add(function () {
+      var K0 = T.keyRef();
+      T.tryFile({ name: 'huge.txt', size: 100000, text: function () { return Promise.resolve('x'); } });
+      if (/limit/.test(T.keyStatusText()) && T.keyRef() === K0) ok('file-size limit: a 100 KB file is refused without being read'); else bad('file-size limit', T.keyStatusText());
+    });
+    add(function () {
+      T.setKey(hexBytes(C.GOLDEN[0].keyHex), 'test');
+      T.setInputs({ pass: '', site: 'example.com', version: 1, mode: 'hex64' });
+      return T.deriveNow().then(function () {
+        if (T.outputText() === '' && /passphrase/i.test(T.statusText())) ok('failure path: empty passphrase blocks output with a message');
+        else bad('failure path: empty passphrase blocks output', 'out="' + T.outputText() + '" status="' + T.statusText() + '"');
+      });
+    });
+    add(function () {
+      var v = C.GOLDEN[0];
+      T.setInputs({ pass: v.passphrase, site: v.label, version: v.n, mode: 'hex64' });
+      return T.deriveNow().then(function () {
+        if (T.outputText() === v.hex64) {
+          T.setInputs({ site: 'other-site.example' }); T.fireInput();
+          if (T.staleVisible()) ok('failure path: a site change after generating marks the output stale'); else bad('stale indicator missing');
+        } else bad('UI did not reproduce vector 1', T.outputText());
+      });
+    });
+
+    chain.catch(function (e) { fail++; stLine('fail', 'Self-test crashed: ' + (e && e.message ? e.message : e)); })
+      .then(function () {
+        T.end();
+        var kept = T.keyRef() === saved0.K;
+        var p = saved0.K ? C.sha256(saved0.K).then(function (h) { return C.toHex(h) === realHex; }) : Promise.resolve(true);
+        return p.then(function (same) {
+          if (kept && same) ok('your loaded key and form were left exactly as they were (same object, same bytes)');
+          else bad('your loaded key was left untouched', 'it changed');
+          info('Self-test finished: ' + pass + ' passed, ' + fail + ' failed.');
+          els.stRun.disabled = false;
+        });
+      });
+  }
+})();
+</script>
+</body>
+</html>
